@@ -1,0 +1,8 @@
+{
+  "name": "Investment Forecasting & Opportunity Cost Calculator",
+  "description": "Multi-horizon Monte Carlo forecasting, explicit uncertainty modeling, withdrawal opportunity cost analysis, and stability assessment up to 200 years.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
