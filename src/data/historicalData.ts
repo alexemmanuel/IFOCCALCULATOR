@@ -1,4 +1,4 @@
-import { AssetClassPreset, HorizonBandDefinition, HistoricalYearRecord, CurrencyConfig } from '../types';
+import { AssetClassPreset, HorizonBandDefinition, HistoricalYearRecord, CurrencyConfig, CurrencyCode } from '../types';
 
 /**
  * Standard Asset Class Presets from Specification Page 5 Table 9 + Global & Africa Tiers:
@@ -163,21 +163,113 @@ export const ASSET_CLASS_PRESETS: AssetClassPreset[] = [
 /**
  * Currency Configurations & Conversion Factors
  */
-export const CURRENCY_CONFIGS: Record<string, CurrencyConfig> = {
-  USD: { code: 'USD', symbol: '$', name: 'US Dollar', rateToUsd: 1.0, isAfrican: false, country: 'United States' },
-  EUR: { code: 'EUR', symbol: '€', name: 'Euro', rateToUsd: 0.92, isAfrican: false, country: 'Eurozone' },
-  GBP: { code: 'GBP', symbol: '£', name: 'British Pound', rateToUsd: 0.78, isAfrican: false, country: 'United Kingdom' },
-  ZAR: { code: 'ZAR', symbol: 'R', name: 'South African Rand', rateToUsd: 18.2, isAfrican: true, country: 'South Africa' },
-  NGN: { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', rateToUsd: 1350.0, isAfrican: true, country: 'Nigeria' },
-  KES: { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling', rateToUsd: 129.0, isAfrican: true, country: 'Kenya' },
-  EGP: { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound', rateToUsd: 48.5, isAfrican: true, country: 'Egypt' },
-  GHS: { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi', rateToUsd: 15.5, isAfrican: true, country: 'Ghana' },
-  MAD: { code: 'MAD', symbol: 'DH', name: 'Moroccan Dirham', rateToUsd: 9.8, isAfrican: true, country: 'Morocco' },
-  TND: { code: 'TND', symbol: 'DT', name: 'Tunisian Dinar', rateToUsd: 3.1, isAfrican: true, country: 'Tunisia' },
-  XOF: { code: 'XOF', symbol: 'CFA', name: 'West African CFA Franc', rateToUsd: 605.0, isAfrican: true, country: 'WAEMU / UEMOA' },
-  JPY: { code: 'JPY', symbol: '¥', name: 'Japanese Yen', rateToUsd: 152.0, isAfrican: false, country: 'Japan' },
-  AUD: { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', rateToUsd: 1.52, isAfrican: false, country: 'Australia' },
-  CAD: { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', rateToUsd: 1.38, isAfrican: false, country: 'Canada' }
+export const CURRENCY_CONFIGS: Record<CurrencyCode, CurrencyConfig> = {
+  // Global & North America
+  USD: { code: 'USD', symbol: '$', name: 'US Dollar', displayShort: 'USD ($)', rateToUsd: 1.0, isAfrican: false, country: 'USA', continent: 'North America' },
+  CAD: { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', displayShort: 'CAD (CA$)', rateToUsd: 1.42, isAfrican: false, country: 'Canada', continent: 'North America' },
+  MXN: { code: 'MXN', symbol: 'Mex$', name: 'Mexican Peso', displayShort: 'MXN (Mex$)', rateToUsd: 20.4, isAfrican: false, country: 'Mexico', continent: 'North America' },
+  GTQ: { code: 'GTQ', symbol: 'Q', name: 'Guatemalan Quetzal', displayShort: 'GTQ (Q)', rateToUsd: 7.75, isAfrican: false, country: 'Guatemala', continent: 'North America' },
+  CRC: { code: 'CRC', symbol: '₡', name: 'Costa Rican Colón', displayShort: 'CRC (₡)', rateToUsd: 512.0, isAfrican: false, country: 'Costa Rica', continent: 'North America' },
+  JMD: { code: 'JMD', symbol: 'J$', name: 'Jamaican Dollar', displayShort: 'JMD (J$)', rateToUsd: 157.0, isAfrican: false, country: 'Jamaica', continent: 'North America' },
+  BZD: { code: 'BZD', symbol: 'BZ$', name: 'Belize Dollar', displayShort: 'BZD (BZ$)', rateToUsd: 2.0, isAfrican: false, country: 'Belize', continent: 'North America' },
+  HNL: { code: 'HNL', symbol: 'L', name: 'Honduran Lempira', displayShort: 'HNL (L)', rateToUsd: 24.8, isAfrican: false, country: 'Honduras', continent: 'North America' },
+  NIO: { code: 'NIO', symbol: 'C$', name: 'Nicaraguan Córdoba', displayShort: 'NIO (C$)', rateToUsd: 36.8, isAfrican: false, country: 'Nicaragua', continent: 'North America' },
+  DOP: { code: 'DOP', symbol: 'RD$', name: 'Dominican Peso', displayShort: 'DOP (RD$)', rateToUsd: 59.5, isAfrican: false, country: 'Dominican Republic', continent: 'North America' },
+  HTG: { code: 'HTG', symbol: 'G', name: 'Haitian Gourde', displayShort: 'HTG (G)', rateToUsd: 132.0, isAfrican: false, country: 'Haiti', continent: 'North America' },
+  TTD: { code: 'TTD', symbol: 'TT$', name: 'Trinidad and Tobago Dollar', displayShort: 'TTD (TT$)', rateToUsd: 6.78, isAfrican: false, country: 'Trinidad and Tobago', continent: 'North America' },
+  BSD: { code: 'BSD', symbol: 'B$', name: 'Bahamian Dollar', displayShort: 'BSD (B$)', rateToUsd: 1.0, isAfrican: false, country: 'Bahamas', continent: 'North America' },
+  BBD: { code: 'BBD', symbol: 'Bds$', name: 'Barbadian Dollar', displayShort: 'BBD (Bds$)', rateToUsd: 2.0, isAfrican: false, country: 'Barbados', continent: 'North America' },
+  XCD: { code: 'XCD', symbol: 'EC$', name: 'East Caribbean Dollar', displayShort: 'XCD (EC$)', rateToUsd: 2.70, isAfrican: false, country: 'Eastern Caribbean', continent: 'North America' },
+  KYD: { code: 'KYD', symbol: 'CI$', name: 'Cayman Islands Dollar', displayShort: 'KYD (CI$)', rateToUsd: 0.83, isAfrican: false, country: 'Cayman Islands', continent: 'North America' },
+  BMD: { code: 'BMD', symbol: 'BD$', name: 'Bermudian Dollar', displayShort: 'BMD (BD$)', rateToUsd: 1.0, isAfrican: false, country: 'Bermuda', continent: 'North America' },
+  AWG: { code: 'AWG', symbol: 'Afl.', name: 'Aruban Florin', displayShort: 'AWG (Afl.)', rateToUsd: 1.80, isAfrican: false, country: 'Aruba', continent: 'North America' },
+  ANG: { code: 'ANG', symbol: 'NAƒ', name: 'Netherlands Antillean Guilder', displayShort: 'ANG (NAƒ)', rateToUsd: 1.80, isAfrican: false, country: 'Curaçao & Sint Maarten', continent: 'North America' },
+  PAB: { code: 'PAB', symbol: 'B/.', name: 'Panamanian Balboa', displayShort: 'PAB (B/.)', rateToUsd: 1.0, isAfrican: false, country: 'Panama', continent: 'North America' },
+  CUP: { code: 'CUP', symbol: '₱', name: 'Cuban Peso', displayShort: 'CUP (₱)', rateToUsd: 24.0, isAfrican: false, country: 'Cuba', continent: 'North America' },
+
+  // Europe
+  EUR: { code: 'EUR', symbol: '€', name: 'Euro', displayShort: 'EUR (€)', rateToUsd: 0.88, isAfrican: false, country: 'Eurozone', continent: 'Europe' },
+  GBP: { code: 'GBP', symbol: '£', name: 'British Pound', displayShort: 'GBP (£)', rateToUsd: 0.76, isAfrican: false, country: 'Great Britain', continent: 'Europe' },
+  CHF: { code: 'CHF', symbol: 'Fr', name: 'Swiss Franc', displayShort: 'CHF (Fr)', rateToUsd: 0.88, isAfrican: false, country: 'Switzerland', continent: 'Europe' },
+  SEK: { code: 'SEK', symbol: 'kr', name: 'Swedish Krona', displayShort: 'SEK (kr)', rateToUsd: 10.45, isAfrican: false, country: 'Sweden', continent: 'Europe' },
+  NOK: { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone', displayShort: 'NOK (kr)', rateToUsd: 10.82, isAfrican: false, country: 'Norway', continent: 'Europe' },
+  DKK: { code: 'DKK', symbol: 'kr', name: 'Danish Krone', displayShort: 'DKK (kr)', rateToUsd: 6.92, isAfrican: false, country: 'Denmark', continent: 'Europe' },
+  PLN: { code: 'PLN', symbol: 'zł', name: 'Polish Złoty', displayShort: 'PLN (zł)', rateToUsd: 3.98, isAfrican: false, country: 'Poland', continent: 'Europe' },
+  CZK: { code: 'CZK', symbol: 'Kč', name: 'Czech Koruna', displayShort: 'CZK (Kč)', rateToUsd: 23.4, isAfrican: false, country: 'Czech Republic', continent: 'Europe' },
+  HUF: { code: 'HUF', symbol: 'Ft', name: 'Hungarian Forint', displayShort: 'HUF (Ft)', rateToUsd: 368.0, isAfrican: false, country: 'Hungary', continent: 'Europe' },
+  RON: { code: 'RON', symbol: 'lei', name: 'Romanian Leu', displayShort: 'RON (lei)', rateToUsd: 4.65, isAfrican: false, country: 'Romania', continent: 'Europe' },
+  TRY: { code: 'TRY', symbol: '₺', name: 'Turkish Lira', displayShort: 'TRY (₺)', rateToUsd: 34.8, isAfrican: false, country: 'Turkey', continent: 'Europe' },
+  ISK: { code: 'ISK', symbol: 'kr', name: 'Icelandic Króna', displayShort: 'ISK (kr)', rateToUsd: 138.0, isAfrican: false, country: 'Iceland', continent: 'Europe' },
+  RSD: { code: 'RSD', symbol: 'din.', name: 'Serbian Dinar', displayShort: 'RSD (din.)', rateToUsd: 108.0, isAfrican: false, country: 'Serbia', continent: 'Europe' },
+  BGN: { code: 'BGN', symbol: 'лв', name: 'Bulgarian Lev', displayShort: 'BGN (лв)', rateToUsd: 1.80, isAfrican: false, country: 'Bulgaria', continent: 'Europe' },
+
+  // Asia
+  CNY: { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', displayShort: 'CNY (¥)', rateToUsd: 7.24, isAfrican: false, country: 'China', continent: 'Asia' },
+  JPY: { code: 'JPY', symbol: '¥', name: 'Japanese Yen', displayShort: 'JPY (¥)', rateToUsd: 154.0, isAfrican: false, country: 'Japan', continent: 'Asia' },
+  INR: { code: 'INR', symbol: '₹', name: 'Indian Rupee', displayShort: 'INR (₹)', rateToUsd: 84.1, isAfrican: false, country: 'India', continent: 'Asia' },
+  SGD: { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', displayShort: 'SGD (S$)', rateToUsd: 1.32, isAfrican: false, country: 'Singapore', continent: 'Asia' },
+  KRW: { code: 'KRW', symbol: '₩', name: 'South Korean Won', displayShort: 'KRW (₩)', rateToUsd: 1385.0, isAfrican: false, country: 'South Korea', continent: 'Asia' },
+  HKD: { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar', displayShort: 'HKD (HK$)', rateToUsd: 7.78, isAfrican: false, country: 'Hong Kong', continent: 'Asia' },
+  TWD: { code: 'TWD', symbol: 'NT$', name: 'New Taiwan Dollar', displayShort: 'TWD (NT$)', rateToUsd: 32.2, isAfrican: false, country: 'Taiwan', continent: 'Asia' },
+  AED: { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham', displayShort: 'AED (د.إ)', rateToUsd: 3.67, isAfrican: false, country: 'United Arab Emirates', continent: 'Asia' },
+  SAR: { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal', displayShort: 'SAR (﷼)', rateToUsd: 3.75, isAfrican: false, country: 'Saudi Arabia', continent: 'Asia' },
+  QAR: { code: 'QAR', symbol: 'QR', name: 'Qatari Riyal', displayShort: 'QAR (QR)', rateToUsd: 3.64, isAfrican: false, country: 'Qatar', continent: 'Asia' },
+  KWD: { code: 'KWD', symbol: 'KD', name: 'Kuwaiti Dinar', displayShort: 'KWD (KD)', rateToUsd: 0.31, isAfrican: false, country: 'Kuwait', continent: 'Asia' },
+  BHD: { code: 'BHD', symbol: 'BD', name: 'Bahraini Dinar', displayShort: 'BHD (BD)', rateToUsd: 0.376, isAfrican: false, country: 'Bahrain', continent: 'Asia' },
+  OMR: { code: 'OMR', symbol: 'OMR', name: 'Omani Rial', displayShort: 'OMR (OMR)', rateToUsd: 0.385, isAfrican: false, country: 'Oman', continent: 'Asia' },
+  IDR: { code: 'IDR', symbol: 'Rp', name: 'Indonesian Rupiah', displayShort: 'IDR (Rp)', rateToUsd: 15750.0, isAfrican: false, country: 'Indonesia', continent: 'Asia' },
+  MYR: { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit', displayShort: 'MYR (RM)', rateToUsd: 4.35, isAfrican: false, country: 'Malaysia', continent: 'Asia' },
+  THB: { code: 'THB', symbol: '฿', name: 'Thai Baht', displayShort: 'THB (฿)', rateToUsd: 33.8, isAfrican: false, country: 'Thailand', continent: 'Asia' },
+  PHP: { code: 'PHP', symbol: '₱', name: 'Philippine Peso', displayShort: 'PHP (₱)', rateToUsd: 58.2, isAfrican: false, country: 'Philippines', continent: 'Asia' },
+  VND: { code: 'VND', symbol: '₫', name: 'Vietnamese Dong', displayShort: 'VND (₫)', rateToUsd: 25300.0, isAfrican: false, country: 'Vietnam', continent: 'Asia' },
+  PKR: { code: 'PKR', symbol: 'Rs', name: 'Pakistani Rupee', displayShort: 'PKR (Rs)', rateToUsd: 278.0, isAfrican: false, country: 'Pakistan', continent: 'Asia' },
+  BDT: { code: 'BDT', symbol: '৳', name: 'Bangladeshi Taka', displayShort: 'BDT (৳)', rateToUsd: 121.0, isAfrican: false, country: 'Bangladesh', continent: 'Asia' },
+  ILS: { code: 'ILS', symbol: '₪', name: 'Israeli New Shekel', displayShort: 'ILS (₪)', rateToUsd: 3.72, isAfrican: false, country: 'Israel', continent: 'Asia' },
+
+  // Africa
+  NGN: { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', displayShort: 'NGN (₦)', rateToUsd: 1327.24, isAfrican: true, country: 'Nigeria', continent: 'Africa' },
+  ZAR: { code: 'ZAR', symbol: 'R', name: 'South African Rand', displayShort: 'ZAR (R)', rateToUsd: 16.4, isAfrican: true, country: 'South Africa', continent: 'Africa' },
+  KES: { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling', displayShort: 'KES (KSh)', rateToUsd: 129.68, isAfrican: true, country: 'Kenya', continent: 'Africa' },
+  EGP: { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound', displayShort: 'EGP (E£)', rateToUsd: 48.75, isAfrican: true, country: 'Egypt', continent: 'Africa' },
+  GHS: { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi', displayShort: 'GHS (GH₵)', rateToUsd: 15.65, isAfrican: true, country: 'Ghana', continent: 'Africa' },
+  MAD: { code: 'MAD', symbol: 'DH', name: 'Moroccan Dirham', displayShort: 'MAD (DH)', rateToUsd: 9.85, isAfrican: true, country: 'Morocco', continent: 'Africa' },
+  TND: { code: 'TND', symbol: 'DT', name: 'Tunisian Dinar', displayShort: 'TND (DT)', rateToUsd: 3.12, isAfrican: true, country: 'Tunisia', continent: 'Africa' },
+  DZD: { code: 'DZD', symbol: 'DA', name: 'Algerian Dinar', displayShort: 'DZD (DA)', rateToUsd: 133.5, isAfrican: true, country: 'Algeria', continent: 'Africa' },
+  UGX: { code: 'UGX', symbol: 'USh', name: 'Ugandan Shilling', displayShort: 'UGX (USh)', rateToUsd: 3670.0, isAfrican: true, country: 'Uganda', continent: 'Africa' },
+  TZS: { code: 'TZS', symbol: 'TSh', name: 'Tanzanian Shilling', displayShort: 'TZS (TSh)', rateToUsd: 2600.0, isAfrican: true, country: 'Tanzania', continent: 'Africa' },
+  RWF: { code: 'RWF', symbol: 'FRw', name: 'Rwandan Franc', displayShort: 'RWF (FRw)', rateToUsd: 1365.0, isAfrican: true, country: 'Rwanda', continent: 'Africa' },
+  ETB: { code: 'ETB', symbol: 'Br', name: 'Ethiopian Birr', displayShort: 'ETB (Br)', rateToUsd: 125.0, isAfrican: true, country: 'Ethiopia', continent: 'Africa' },
+  XOF: { code: 'XOF', symbol: 'CFA', name: 'West African CFA Franc', displayShort: 'XOF (CFA)', rateToUsd: 605.5, isAfrican: true, country: 'West Africa', continent: 'Africa' },
+  XAF: { code: 'XAF', symbol: 'FCFA', name: 'Central African CFA Franc', displayShort: 'XAF (FCFA)', rateToUsd: 605.0, isAfrican: true, country: 'Central Africa', continent: 'Africa' },
+  MUR: { code: 'MUR', symbol: 'Rs', name: 'Mauritian Rupee', displayShort: 'MUR (Rs)', rateToUsd: 46.5, isAfrican: true, country: 'Mauritius', continent: 'Africa' },
+  BWP: { code: 'BWP', symbol: 'P', name: 'Botswana Pula', displayShort: 'BWP (P)', rateToUsd: 13.6, isAfrican: true, country: 'Botswana', continent: 'Africa' },
+  NAD: { code: 'NAD', symbol: 'N$', name: 'Namibian Dollar', displayShort: 'NAD (N$)', rateToUsd: 18.2, isAfrican: true, country: 'Namibia', continent: 'Africa' },
+  ZMW: { code: 'ZMW', symbol: 'ZK', name: 'Zambian Kwacha', displayShort: 'ZMW (ZK)', rateToUsd: 26.5, isAfrican: true, country: 'Zambia', continent: 'Africa' },
+  MZN: { code: 'MZN', symbol: 'MT', name: 'Mozambican Metical', displayShort: 'MZN (MT)', rateToUsd: 63.8, isAfrican: true, country: 'Mozambique', continent: 'Africa' },
+  AOA: { code: 'AOA', symbol: 'Kz', name: 'Angolan Kwanza', displayShort: 'AOA (Kz)', rateToUsd: 855.0, isAfrican: true, country: 'Angola', continent: 'Africa' },
+
+  // South America
+  BRL: { code: 'BRL', symbol: 'R$', name: 'Brazilian Real', displayShort: 'BRA (R$)', rateToUsd: 5.75, isAfrican: false, country: 'Brazil', continent: 'South America' },
+  ARS: { code: 'ARS', symbol: '$', name: 'Argentine Peso', displayShort: 'ARS ($)', rateToUsd: 995.0, isAfrican: false, country: 'Argentina', continent: 'South America' },
+  CLP: { code: 'CLP', symbol: 'CLP$', name: 'Chilean Peso', displayShort: 'CLP (CLP$)', rateToUsd: 945.0, isAfrican: false, country: 'Chile', continent: 'South America' },
+  COP: { code: 'COP', symbol: 'COL$', name: 'Colombian Peso', displayShort: 'COP (COL$)', rateToUsd: 4380.0, isAfrican: false, country: 'Colombia', continent: 'South America' },
+  PEN: { code: 'PEN', symbol: 'S/', name: 'Peruvian Sol', displayShort: 'PEN (S/)', rateToUsd: 3.75, isAfrican: false, country: 'Peru', continent: 'South America' },
+  UYU: { code: 'UYU', symbol: '$U', name: 'Uruguayan Peso', displayShort: 'UYU ($U)', rateToUsd: 42.5, isAfrican: false, country: 'Uruguay', continent: 'South America' },
+  BOB: { code: 'BOB', symbol: 'Bs', name: 'Bolivian Boliviano', displayShort: 'BOB (Bs)', rateToUsd: 6.91, isAfrican: false, country: 'Bolivia', continent: 'South America' },
+  PYG: { code: 'PYG', symbol: '₲', name: 'Paraguayan Guaraní', displayShort: 'PYG (₲)', rateToUsd: 7800.0, isAfrican: false, country: 'Paraguay', continent: 'South America' },
+  GYD: { code: 'GYD', symbol: 'G$', name: 'Guyanese Dollar', displayShort: 'GYD (G$)', rateToUsd: 209.0, isAfrican: false, country: 'Guyana', continent: 'South America' },
+  SRD: { code: 'SRD', symbol: '$', name: 'Surinamese Dollar', displayShort: 'SRD ($)', rateToUsd: 35.5, isAfrican: false, country: 'Suriname', continent: 'South America' },
+  VES: { code: 'VES', symbol: 'Bs', name: 'Venezuelan Bolívar', displayShort: 'VES (Bs)', rateToUsd: 36.5, isAfrican: false, country: 'Venezuela', continent: 'South America' },
+
+  // Oceania
+  AUD: { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', displayShort: 'AUD (A$)', rateToUsd: 1.55, isAfrican: false, country: 'Australia', continent: 'Oceania' },
+  NZD: { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar', displayShort: 'NZD (NZ$)', rateToUsd: 1.66, isAfrican: false, country: 'New Zealand', continent: 'Oceania' },
+  FJD: { code: 'FJD', symbol: 'FJ$', name: 'Fijian Dollar', displayShort: 'FJD (FJ$)', rateToUsd: 2.25, isAfrican: false, country: 'Fiji', continent: 'Oceania' },
+  PGK: { code: 'PGK', symbol: 'K', name: 'Papua New Guinean Kina', displayShort: 'PGK (K)', rateToUsd: 3.95, isAfrican: false, country: 'Papua New Guinea', continent: 'Oceania' },
+  SBD: { code: 'SBD', symbol: 'SI$', name: 'Solomon Islands Dollar', displayShort: 'SBD (SI$)', rateToUsd: 8.5, isAfrican: false, country: 'Solomon Islands', continent: 'Oceania' },
+  TOP: { code: 'TOP', symbol: 'T$', name: 'Tongan Paʻanga', displayShort: 'TOP (T$)', rateToUsd: 2.35, isAfrican: false, country: 'Tonga', continent: 'Oceania' },
+  WST: { code: 'WST', symbol: 'WS$', name: 'Samoan Tālā', displayShort: 'WST (WS$)', rateToUsd: 2.75, isAfrican: false, country: 'Samoa', continent: 'Oceania' },
+  VUV: { code: 'VUV', symbol: 'VT', name: 'Vanuatu Vatu', displayShort: 'VUV (VT)', rateToUsd: 120.0, isAfrican: false, country: 'Vanuatu', continent: 'Oceania' }
 };
 
 /**

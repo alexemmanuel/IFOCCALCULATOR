@@ -80,10 +80,10 @@ export default function App() {
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
 
   // Fetch real-time market rates from live API
-  const handleRefreshLiveRates = useCallback(async () => {
+  const handleRefreshLiveRates = useCallback(async (forceFresh: boolean = true) => {
     setIsLoadingRates(true);
     try {
-      const res = await fetchLiveExchangeRates();
+      const res = await fetchLiveExchangeRates(forceFresh);
       setLiveRates(res.rates);
       setLastRatesUpdated(res.lastUpdated);
     } catch (err) {
@@ -95,8 +95,8 @@ export default function App() {
 
   // Fetch live market exchange rates on mount and periodically
   useEffect(() => {
-    handleRefreshLiveRates();
-    const interval = setInterval(handleRefreshLiveRates, 5 * 60 * 1000); // refresh every 5 min
+    handleRefreshLiveRates(false);
+    const interval = setInterval(() => handleRefreshLiveRates(false), 5 * 60 * 1000); // refresh every 5 min
     return () => clearInterval(interval);
   }, [handleRefreshLiveRates]);
 

@@ -41,7 +41,8 @@ import {
   Loader2,
   ArrowRightLeft,
   Check,
-  RefreshCw
+  RefreshCw,
+  ChevronDown
 } from 'lucide-react';
 
 interface ForecastTabProps {
@@ -102,21 +103,13 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
   const currentPreset = ASSET_CLASS_PRESETS.find(p => p.id === selectedAssetClass);
   const isTierBorC = currentPreset?.tier === 'Tier B' || currentPreset?.tier === 'Tier C';
 
-  // User can select ANY comparison currency in the converter, dynamically defaulting to active reporting currency (or EUR if active is USD)
-  const [converterCurrency, setConverterCurrency] = useState<CurrencyCode>(() => {
-    return currency !== 'USD' ? currency : 'EUR';
-  });
-
-  // Whenever user picks a different currency in the navbar, automatically update the converter comparison to that country!
-  useEffect(() => {
-    if (currency !== 'USD') {
-      setConverterCurrency(currency);
-    }
-  }, [currency]);
-
+  // The converter dynamically binds to the active navbar reporting currency (defaulting to EUR if active is USD)
+  const converterCurrency: CurrencyCode = currency !== 'USD' ? currency : 'EUR';
   const converterCfg = CURRENCY_CONFIGS[converterCurrency] || CURRENCY_CONFIGS['EUR'];
   const converterRateToUsd = liveRates?.[converterCurrency] ?? converterCfg.rateToUsd ?? 1.0;
   const rateToUsd = liveRates?.[currency] ?? currConfig.rateToUsd ?? 1.0;
+  const displayTargetCode = converterCurrency === 'BRL' ? 'BRA' : converterCfg.code;
+  const displayTargetCurrencyLabel = `${displayTargetCode} (${converterCfg.symbol})`;
 
   // Real-time Dollar & Comparison Currency Equivalents
   const usdCapitalEquivalent = currency === 'USD' ? params.initialCapital : params.initialCapital / rateToUsd;
@@ -132,31 +125,26 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
   // Two-Way Interactive Currency Converter State
   const [converterUsd, setConverterUsd] = useState<number>(() => {
     if (currency === 'USD') return params.initialCapital;
-    return Math.round(params.initialCapital / rateToUsd);
+    return converterRateToUsd > 0 ? Math.round(params.initialCapital / converterRateToUsd) : params.initialCapital;
   });
 
   const [converterTarget, setConverterTarget] = useState<number>(() => {
     if (currency === converterCurrency) return params.initialCapital;
-    const usdVal = currency === 'USD' ? params.initialCapital : params.initialCapital / rateToUsd;
-    return cleanRoundCurrency(usdVal * converterRateToUsd, converterCurrency);
+    return cleanRoundCurrency(params.initialCapital * converterRateToUsd, converterCurrency);
   });
 
   const [applySuccessMessage, setApplySuccessMessage] = useState<string | null>(null);
 
-  // Keep converter in sync when initialCapital, currency, converterCurrency, or liveRates updates
+  // Keep converter in sync when initialCapital, currency, or liveRates updates
   useEffect(() => {
     if (currency === 'USD') {
       setConverterUsd(params.initialCapital);
       setConverterTarget(cleanRoundCurrency(params.initialCapital * converterRateToUsd, converterCurrency));
-    } else if (currency === converterCurrency) {
+    } else {
       setConverterTarget(params.initialCapital);
       setConverterUsd(converterRateToUsd > 0 ? Math.round(params.initialCapital / converterRateToUsd) : params.initialCapital);
-    } else {
-      const usdVal = Math.round(params.initialCapital / rateToUsd);
-      setConverterUsd(usdVal);
-      setConverterTarget(cleanRoundCurrency(usdVal * converterRateToUsd, converterCurrency));
     }
-  }, [params.initialCapital, currency, converterCurrency, converterRateToUsd, rateToUsd]);
+  }, [params.initialCapital, currency, converterCurrency, converterRateToUsd]);
 
   const handleUsdInputChange = (val: number) => {
     const safeVal = Math.max(0, val);
@@ -171,7 +159,7 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
   };
 
   const handleApplyConverterToPortfolio = () => {
-    const targetAmount = currency === 'USD' ? converterUsd : (currency === converterCurrency ? converterTarget : Math.round(converterUsd * rateToUsd));
+    const targetAmount = currency === 'USD' ? converterUsd : converterTarget;
     if (onApplyPortfolioCapital) {
       onApplyPortfolioCapital(targetAmount, currency);
     } else {
@@ -184,12 +172,17 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
   };
 
   const handleSwitchCurrencyAndApply = () => {
-    const newCurrency: CurrencyCode = currency === 'USD' ? converterCurrency : (currency === converterCurrency ? 'USD' : converterCurrency);
+    const newCurrency: CurrencyCode = currency === 'USD' ? converterCurrency : 'USD';
     const targetAmount = newCurrency === 'USD' ? converterUsd : converterTarget;
+    if (onCurrencyChange) {
+      onCurrencyChange(newCurrency);
+    }
     if (onApplyPortfolioCapital) {
       onApplyPortfolioCapital(targetAmount, newCurrency);
-    } else if (onCurrencyChange) {
-      onCurrencyChange(newCurrency);
+    } else {
+      const updated = { ...params, initialCapital: targetAmount };
+      setParams(updated);
+      onRunSimulation(updated);
     }
     setApplySuccessMessage(`Switched to ${newCurrency} and set Portfolio to ${formatCurrency(targetAmount, 0, newCurrency)}`);
     setTimeout(() => setApplySuccessMessage(null), 3500);
@@ -216,30 +209,6 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Active Currency Live FX Banner (when non-USD) */}
-      {currency !== 'USD' && (
-        <div className="bg-cyan-950/30 border border-cyan-800/40 rounded-xl px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-cyan-200">
-          <div className="flex items-center gap-2">
-            <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span>
-              Reporting in <strong>{currency} ({sym} · {currConfig.name})</strong> · Live Market Rate: 1 USD = {sym}{rateToUsd >= 100 ? rateToUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : rateToUsd.toFixed(2)} {currency}
-            </span>
-          </div>
-          {onToggleFxOverlay && isAfricanCurrency && (
-            <button
-              onClick={onToggleFxOverlay}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-semibold transition-colors shrink-0 self-start sm:self-auto ${
-                enableFxOverlay
-                  ? 'bg-cyan-500 text-slate-950 font-bold'
-                  : 'bg-slate-900 border border-cyan-500/40 text-cyan-300 hover:bg-slate-800'
-              }`}
-            >
-              {enableFxOverlay ? 'FX Overlay Active (+3% Vol Drag)' : 'Enable FX Overlay (+3% Vol Drag)'}
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Mandatory Tier B / C Data Note (Compact) */}
       {isTierBorC && (
         <div className="bg-amber-950/30 border border-amber-600/40 rounded-xl p-3 flex items-start gap-2.5 text-amber-200 text-xs">
@@ -283,32 +252,35 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
               <div className="flex items-center gap-2 min-w-0">
                 <span className={`w-2 h-2 rounded-full ${isLoadingRates ? 'bg-amber-400 animate-spin' : 'bg-emerald-400 animate-pulse'} shrink-0`} />
                 <span className="text-slate-300 font-semibold truncate">
-                  1 USD = {converterCfg.symbol}{converterRateToUsd >= 100 ? converterRateToUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : converterRateToUsd.toFixed(2)} {converterCurrency}
+                  1 USD = {converterCfg.symbol}{converterRateToUsd >= 100 ? converterRateToUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : converterRateToUsd.toFixed(2)} {displayTargetCode}
                 </span>
                 <span className="text-[10px] text-emerald-400 font-sans hidden sm:inline shrink-0">Live Market</span>
               </div>
 
               {onRefreshLiveRates && (
                 <button
-                  onClick={onRefreshLiveRates}
+                  onClick={() => onRefreshLiveRates()}
                   disabled={isLoadingRates}
-                  className="px-2 py-0.5 rounded text-[10px] bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
-                  title={`Live FX Engine (${lastRatesUpdated}). Click to sync latest real-time rates.`}
+                  className="px-2 py-0.5 rounded text-[10px] bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition-colors flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-60"
+                  title={`Live FX Engine (${lastRatesUpdated}). Click to force refresh latest real-time rates.`}
                 >
                   <RefreshCw className={`w-2.5 h-2.5 ${isLoadingRates ? 'animate-spin' : ''}`} />
-                  <span>Sync</span>
+                  <span>{isLoadingRates ? 'Syncing...' : 'Sync'}</span>
                 </button>
               )}
             </div>
 
-            {/* Two-Way Linked Converter: Dollar ⇄ Target Currency */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            {/* Two-Way Linked Converter: Constant USD ⇄ Selected Navbar Currency */}
+            <div className="grid grid-cols-2 gap-3 text-xs items-start">
+              {/* Left Column: Constant USD */}
               <div>
-                <label className="text-slate-400 font-medium text-[11px] block mb-1">
-                  US Dollar ($ USD)
-                </label>
+                <div className="h-5 flex items-center mb-1">
+                  <label className="text-slate-400 font-medium text-[11px] truncate">
+                    USD ($)
+                  </label>
+                </div>
                 <div className="relative">
-                  <span className="absolute left-2.5 top-1.5 text-slate-500 font-mono">$</span>
+                  <span className="absolute left-2.5 top-1.5 text-slate-500 font-mono text-xs pointer-events-none">$</span>
                   <input
                     type="number"
                     step={1000}
@@ -321,45 +293,15 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
                 </div>
               </div>
 
+              {/* Right Column: Currency selected from navbar */}
               <div>
-                <div className="flex items-center justify-between mb-1 gap-1">
+                <div className="h-5 flex items-center mb-1">
                   <label className="text-slate-400 font-medium text-[11px] truncate">
-                    {converterCfg.name}
+                    {displayTargetCurrencyLabel}
                   </label>
-                  {/* Currency Selector for comparison */}
-                  <select
-                    value={converterCurrency}
-                    onChange={(e) => {
-                      const newCurr = e.target.value as CurrencyCode;
-                      setConverterCurrency(newCurr);
-                      const newCfg = CURRENCY_CONFIGS[newCurr] || CURRENCY_CONFIGS['EUR'];
-                      const newRate = liveRates?.[newCurr] ?? newCfg.rateToUsd ?? 1.0;
-                      setConverterTarget(cleanRoundCurrency(converterUsd * newRate, newCurr));
-                    }}
-                    className="bg-slate-900 border border-slate-700 text-cyan-300 font-mono font-bold text-[10px] rounded px-1.5 py-0.5 focus:outline-hidden cursor-pointer"
-                    title="Select currency to compare with USD"
-                  >
-                    <optgroup label="Global Reserves" className="bg-slate-900 text-slate-100">
-                      <option value="EUR">EUR (€)</option>
-                      <option value="GBP">GBP (£)</option>
-                      <option value="CAD">CAD (CA$)</option>
-                      <option value="AUD">AUD (A$)</option>
-                      <option value="JPY">JPY (¥)</option>
-                    </optgroup>
-                    <optgroup label="African & Emerging" className="bg-slate-900 text-slate-100">
-                      <option value="NGN">NGN (₦)</option>
-                      <option value="ZAR">ZAR (R)</option>
-                      <option value="KES">KES (KSh)</option>
-                      <option value="EGP">EGP (E£)</option>
-                      <option value="GHS">GHS (GH₵)</option>
-                      <option value="MAD">MAD (DH)</option>
-                      <option value="TND">TND (DT)</option>
-                      <option value="XOF">XOF (CFA)</option>
-                    </optgroup>
-                  </select>
                 </div>
                 <div className="relative">
-                  <span className="absolute left-2.5 top-1.5 text-slate-500 font-mono">
+                  <span className="absolute left-2.5 top-1.5 text-slate-500 font-mono text-xs pointer-events-none">
                     {converterCfg.symbol}
                   </span>
                   <input
@@ -389,10 +331,10 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
               <button
                 onClick={handleSwitchCurrencyAndApply}
                 className="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 active:scale-95 shrink-0 cursor-pointer"
-                title={`Switch active app currency to ${currency === converterCurrency ? 'USD' : converterCurrency} and apply value`}
+                title={`Switch back and forth between USD and ${displayTargetCode}`}
               >
                 <ArrowRightLeft className="w-3.5 h-3.5" />
-                <span>{currency === converterCurrency ? 'Switch to USD' : `Switch to ${converterCurrency}`}</span>
+                <span>{currency === 'USD' ? `Switch to ${displayTargetCode}` : 'Switch to USD'}</span>
               </button>
             </div>
 
