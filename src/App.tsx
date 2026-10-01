@@ -13,7 +13,9 @@ import {
   CurrencyCode
 } from './types';
 import { HISTORICAL_ANNUAL_RETURNS, CURRENCY_CONFIGS } from './data/historicalData';
-import { runMonteCarloSimulation, computeSensitivityMatrix } from './utils/financialEngine';
+import { runMonteCarloSimulation, computeSensitivityMatrix, cleanRoundCurrency } from './utils/financialEngine';
+import { fetchLiveExchangeRates, BASELINE_MARKET_RATES, getRealTimeRatio } from './services/realTimeCurrencyEngine';
+import { generateExecutiveSummaryPdf } from './utils/pdfReportGenerator';
 import { Header } from './components/Header';
 import { MarqueeTicker } from './components/MarqueeTicker';
 import { ForecastTab } from './components/ForecastTab';
@@ -51,7 +53,10 @@ const DEFAULT_PARAMS: SimulationParameters = {
   currencyMode: 'local_real',
   enableFxOverlay: false,
   fxVolatilityOverlayPct: 0.03,
-  widenedConfidenceBand: false
+  widenedConfidenceBand: false,
+  enableStressTest: false,
+  stressTestYears: 3,
+  stressTestBaselineShift: -0.370
 };
 
 export default function App() {
@@ -69,14 +74,124 @@ export default function App() {
   const [currencyMode, setCurrencyMode] = useState<'local_real' | 'common_base'>('local_real');
   const [enableFxOverlay, setEnableFxOverlay] = useState<boolean>(false);
 
-  // Sync currency and FX overlay to simulation parameters
-  const handleCurrencyChange = useCallback((newCurrency: CurrencyCode) => {
-    setCurrency(newCurrency);
-    setParams(prev => ({
-      ...prev,
-      currency: newCurrency
-    }));
+  // Real-Time Currency Engine State (Live Market Rates)
+  const [liveRates, setLiveRates] = useState<Record<CurrencyCode, number>>(BASELINE_MARKET_RATES);
+  const [lastRatesUpdated, setLastRatesUpdated] = useState<string>('Live Market Baseline');
+  const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
+
+  // Fetch real-time market rates from live API
+  const handleRefreshLiveRates = useCallback(async () => {
+    setIsLoadingRates(true);
+    try {
+      const res = await fetchLiveExchangeRates();
+      setLiveRates(res.rates);
+      setLastRatesUpdated(res.lastUpdated);
+    } catch (err) {
+      console.warn('Real-time FX update warning, using baseline:', err);
+    } finally {
+      setIsLoadingRates(false);
+    }
   }, []);
+
+  // Fetch live market exchange rates on mount and periodically
+  useEffect(() => {
+    handleRefreshLiveRates();
+    const interval = setInterval(handleRefreshLiveRates, 5 * 60 * 1000); // refresh every 5 min
+    return () => clearInterval(interval);
+  }, [handleRefreshLiveRates]);
+
+  // Viewport horizontal shift: tapping right arrow key shifts the page a little towards the end of the viewport
+  const [viewportShiftX, setViewportShiftX] = useState<number>(0);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Do not intercept if focused on inputs, sliders, selects, or textareas
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.key === 'ArrowRight') {
+        // Tapping on the right arrow key shifts the page just enough (28px) to show the yellow icon properly
+        e.preventDefault();
+        setViewportShiftX(28);
+      } else if (e.key === 'ArrowLeft') {
+        // Tapping on the left arrow key shifts back towards the start
+        if (viewportShiftX > 0) {
+          e.preventDefault();
+          setViewportShiftX(0);
+        }
+      } else if (e.key === 'Escape' && viewportShiftX > 0) {
+        setViewportShiftX(0);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewportShiftX]);
+
+  // Compute Monte Carlo Simulation Result
+  const [simResult, setSimResult] = useState<SimulationResult>(() =>
+    runMonteCarloSimulation(DEFAULT_PARAMS)
+  );
+
+  // Compute 2D Sensitivity Matrix
+  const [sensitivityMatrix, setSensitivityMatrix] = useState<SensitivityMatrix>(() =>
+    computeSensitivityMatrix(DEFAULT_PARAMS)
+  );
+
+  // Run simulation handler with immediate override support (prevents stale closure issues)
+  const handleRunSimulation = useCallback((overrideParams?: SimulationParameters) => {
+    const activeParams = overrideParams || params;
+    const res = runMonteCarloSimulation(activeParams);
+    setSimResult(res);
+
+    const sens = computeSensitivityMatrix(activeParams);
+    setSensitivityMatrix(sens);
+  }, [params]);
+
+  // Real-Time Currency Conversion: scales monetary figures by exact live market ratio
+  const handleCurrencyChange = useCallback((newCurrency: CurrencyCode) => {
+    if (newCurrency === currency) return;
+
+    // Use live real-time market ratio difference
+    const ratio = getRealTimeRatio(currency, newCurrency, liveRates);
+
+    const newCapital = cleanRoundCurrency(params.initialCapital * ratio, newCurrency);
+    const newSavings = cleanRoundCurrency(params.annualContribution * ratio, newCurrency);
+
+    const updatedParams: SimulationParameters = {
+      ...params,
+      currency: newCurrency,
+      initialCapital: Math.max(10, newCapital),
+      annualContribution: Math.max(0, newSavings)
+    };
+
+    setParams(updatedParams);
+    setCurrency(newCurrency);
+    handleRunSimulation(updatedParams);
+  }, [currency, liveRates, params, handleRunSimulation]);
+
+  // Direct Apply to Portfolio Handler (immediately reflects in simulation & parameters)
+  const handleApplyPortfolioCapital = useCallback((newCapital: number, targetCurrency?: CurrencyCode) => {
+    const nextCurr = targetCurrency || currency;
+    const updatedParams: SimulationParameters = {
+      ...params,
+      currency: nextCurr,
+      initialCapital: Math.max(10, Math.round(newCapital))
+    };
+    if (nextCurr !== currency) {
+      setCurrency(nextCurr);
+    }
+    setParams(updatedParams);
+    handleRunSimulation(updatedParams);
+  }, [currency, params, handleRunSimulation]);
 
   const handleToggleFxOverlay = useCallback(() => {
     setEnableFxOverlay(prev => {
@@ -89,26 +204,6 @@ export default function App() {
     });
   }, []);
 
-  // Compute Monte Carlo Simulation Result
-  const [simResult, setSimResult] = useState<SimulationResult>(() =>
-    runMonteCarloSimulation(DEFAULT_PARAMS)
-  );
-
-  // Compute 2D Sensitivity Matrix
-  const [sensitivityMatrix, setSensitivityMatrix] = useState<SensitivityMatrix>(() =>
-    computeSensitivityMatrix(DEFAULT_PARAMS)
-  );
-
-  // Run simulation handler
-  const handleRunSimulation = useCallback(() => {
-    const res = runMonteCarloSimulation(params);
-    setSimResult(res);
-
-    // Update sensitivity matrix if return/volatility or horizon changed
-    const sens = computeSensitivityMatrix(params);
-    setSensitivityMatrix(sens);
-  }, [params]);
-
   // Re-run simulation when core parameters change
   useEffect(() => {
     handleRunSimulation();
@@ -117,11 +212,13 @@ export default function App() {
     params.expectedRealReturn,
     params.annualVolatility,
     params.initialCapital,
+    params.annualContribution,
     params.modelType,
     params.valuationDragPct,
     params.currency,
     params.enableFxOverlay,
     params.widenedConfidenceBand,
+    params.enableStressTest,
     handleRunSimulation
   ]);
 
@@ -194,6 +291,28 @@ export default function App() {
     downloadAnchor.remove();
   };
 
+  // State and handler for generating executive PDF report
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
+
+  const handleDownloadReport = useCallback(async () => {
+    try {
+      setIsGeneratingPdf(true);
+      await generateExecutiveSummaryPdf({
+        params,
+        simResult,
+        sensitivityMatrix,
+        currency,
+        currencyMode,
+        isNominal,
+        selectedAssetClassId: selectedAssetClass
+      });
+    } catch (err) {
+      console.error('Failed to generate PDF summary report:', err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  }, [params, simResult, sensitivityMatrix, currency, currencyMode, isNominal, selectedAssetClass]);
+
   const handleResetDefaults = () => {
     setParams(DEFAULT_PARAMS);
     setSelectedAssetClass('us_equities');
@@ -204,8 +323,15 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-100/90 text-slate-900'} flex flex-col font-sans transition-colors duration-200`}>
-      {/* Top Bar Header */}
+    <div className={`min-h-screen w-full max-w-full overflow-x-hidden ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-100/90 text-slate-900'} flex flex-col font-sans transition-colors duration-200 relative`}>
+      {/* Content wrapper with smooth viewport shift on right arrow key */}
+      <div
+        className="flex-1 flex flex-col w-full transition-transform duration-200 ease-out will-change-transform"
+        style={{
+          transform: viewportShiftX ? `translateX(-${viewportShiftX}px)` : undefined
+        }}
+      >
+        {/* Top Bar Header */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -216,10 +342,16 @@ export default function App() {
         onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
         currency={currency}
         onCurrencyChange={handleCurrencyChange}
+        liveRates={liveRates}
+        lastRatesUpdated={lastRatesUpdated}
+        isLoadingRates={isLoadingRates}
+        onRefreshLiveRates={handleRefreshLiveRates}
         enableFxOverlay={enableFxOverlay}
         onToggleFxOverlay={handleToggleFxOverlay}
         onOpenDisclaimers={() => setIsDisclaimersOpen(true)}
         onExportData={handleExportData}
+        onDownloadReport={handleDownloadReport}
+        isGeneratingPdf={isGeneratingPdf}
         onResetDefaults={handleResetDefaults}
       />
 
@@ -227,7 +359,7 @@ export default function App() {
       <MarqueeTicker onSelectInvestment={handleSelectFromMarquee} />
 
       {/* Main Viewport Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 overflow-x-hidden">
         {activeTab === 'forecast' && (
           <ForecastTab
             params={params}
@@ -240,11 +372,18 @@ export default function App() {
             setSelectedAssetClass={setSelectedAssetClass}
             currency={currency}
             onCurrencyChange={handleCurrencyChange}
+            liveRates={liveRates}
+            lastRatesUpdated={lastRatesUpdated}
+            isLoadingRates={isLoadingRates}
+            onRefreshLiveRates={handleRefreshLiveRates}
+            onApplyPortfolioCapital={handleApplyPortfolioCapital}
             currencyMode={currencyMode}
             onCurrencyModeChange={setCurrencyMode}
             enableFxOverlay={enableFxOverlay}
             onToggleFxOverlay={handleToggleFxOverlay}
             onSelectTab={setActiveTab}
+            onDownloadReport={handleDownloadReport}
+            isGeneratingPdf={isGeneratingPdf}
           />
         )}
 
@@ -255,6 +394,7 @@ export default function App() {
             historicalData={historicalData}
             inflationRate={params.inflationRate}
             currency={currency}
+            liveRates={liveRates}
             onSelectTab={setActiveTab}
           />
         )}
@@ -264,6 +404,7 @@ export default function App() {
             onSimulateAsset={handleSimulateAsset}
             onAnalyzeWithdrawals={handleAnalyzeWithdrawalAsset}
             reportingCurrency={currency}
+            liveRates={liveRates}
           />
         )}
 
@@ -271,6 +412,7 @@ export default function App() {
           <MultiHorizonTab
             baseParams={params}
             currency={currency}
+            liveRates={liveRates}
             onSelectHorizon={(yr) => {
               setParams(p => ({ ...p, horizonYears: yr }));
               setActiveTab('forecast');
@@ -313,6 +455,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      </div>
 
       {/* Disclaimers Modal */}
       <DisclaimersModal

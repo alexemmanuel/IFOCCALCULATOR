@@ -73,8 +73,8 @@ export const StabilityGauge: React.FC<StabilityGaugeProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
         {/* Semi-Circle SVG Radial Gauge */}
         <div className="md:col-span-5 flex flex-col items-center justify-center relative">
-          <div className="relative w-48 h-28 flex items-end justify-center select-none">
-            <svg viewBox="0 0 160 90" className="w-full h-full overflow-visible">
+          <div className="relative w-48 h-28 flex items-end justify-center select-none overflow-hidden">
+            <svg viewBox="0 0 160 90" className="w-full h-full overflow-hidden">
               <defs>
                 <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#f43f5e" />

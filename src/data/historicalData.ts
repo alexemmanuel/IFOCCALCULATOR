@@ -168,15 +168,16 @@ export const CURRENCY_CONFIGS: Record<string, CurrencyConfig> = {
   EUR: { code: 'EUR', symbol: '€', name: 'Euro', rateToUsd: 0.92, isAfrican: false, country: 'Eurozone' },
   GBP: { code: 'GBP', symbol: '£', name: 'British Pound', rateToUsd: 0.78, isAfrican: false, country: 'United Kingdom' },
   ZAR: { code: 'ZAR', symbol: 'R', name: 'South African Rand', rateToUsd: 18.2, isAfrican: true, country: 'South Africa' },
-  NGN: { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', rateToUsd: 1650.0, isAfrican: true, country: 'Nigeria' },
+  NGN: { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', rateToUsd: 1350.0, isAfrican: true, country: 'Nigeria' },
   KES: { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling', rateToUsd: 129.0, isAfrican: true, country: 'Kenya' },
   EGP: { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound', rateToUsd: 48.5, isAfrican: true, country: 'Egypt' },
-  GHS: { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi', rateToUsd: 16.2, isAfrican: true, country: 'Ghana' },
+  GHS: { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi', rateToUsd: 15.5, isAfrican: true, country: 'Ghana' },
   MAD: { code: 'MAD', symbol: 'DH', name: 'Moroccan Dirham', rateToUsd: 9.8, isAfrican: true, country: 'Morocco' },
   TND: { code: 'TND', symbol: 'DT', name: 'Tunisian Dinar', rateToUsd: 3.1, isAfrican: true, country: 'Tunisia' },
   XOF: { code: 'XOF', symbol: 'CFA', name: 'West African CFA Franc', rateToUsd: 605.0, isAfrican: true, country: 'WAEMU / UEMOA' },
   JPY: { code: 'JPY', symbol: '¥', name: 'Japanese Yen', rateToUsd: 152.0, isAfrican: false, country: 'Japan' },
-  AUD: { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', rateToUsd: 1.52, isAfrican: false, country: 'Australia' }
+  AUD: { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', rateToUsd: 1.52, isAfrican: false, country: 'Australia' },
+  CAD: { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', rateToUsd: 1.38, isAfrican: false, country: 'Canada' }
 };
 
 /**

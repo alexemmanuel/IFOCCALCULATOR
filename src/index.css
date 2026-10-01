@@ -4,6 +4,19 @@
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+html, body, #root {
+  width: 100%;
+  max-width: 100% !important;
+  overflow-x: clip !important;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 .font-mono {
   font-family: 'IBM Plex Mono', monospace;
 }

@@ -15,8 +15,23 @@ import {
   HistoricalYearRecord,
   CurrencyCode
 } from '../types';
-import { CURRENCY_CONFIGS } from '../data/historicalData';
+import { CURRENCY_CONFIGS, HISTORICAL_ANNUAL_RETURNS } from '../data/historicalData';
 import { sampleStandardNormal, sampleStudentT, createPRNG } from './mathRandom';
+
+/**
+ * 1st percentile of empirical historical market drawdowns / negative annual returns (1900–2025).
+ * Represents catastrophic multi-year sequence risk (e.g. 1929 Great Crash, 1931 trough, 1937, 2008 GFC).
+ */
+export const HISTORICAL_1ST_PERCENTILE_DRAWDOWN = -0.370; // -37.0% annual drawdown shift
+
+export function getHistoricalFirstPercentileDrawdown(
+  data: HistoricalYearRecord[] = HISTORICAL_ANNUAL_RETURNS
+): number {
+  if (!data || data.length === 0) return HISTORICAL_1ST_PERCENTILE_DRAWDOWN;
+  const equityReturns = data.map(d => d.equityRealReturn).sort((a, b) => a - b);
+  const p1Idx = Math.max(0, Math.floor(equityReturns.length * 0.01));
+  return equityReturns[p1Idx] ?? HISTORICAL_1ST_PERCENTILE_DRAWDOWN;
+}
 
 /**
  * Runs a complete Monte Carlo multi-path simulation.
@@ -45,7 +60,10 @@ export function runMonteCarloSimulation(params: SimulationParameters): Simulatio
     seed,
     widenedConfidenceBand = false,
     enableFxOverlay = false,
-    fxVolatilityOverlayPct = 0.03
+    fxVolatilityOverlayPct = 0.03,
+    enableStressTest = false,
+    stressTestYears = 3,
+    stressTestBaselineShift = HISTORICAL_1ST_PERCENTILE_DRAWDOWN
   } = params;
 
   const rng = seed !== undefined ? createPRNG(seed) : Math.random;
@@ -123,9 +141,16 @@ export function runMonteCarloSimulation(params: SimulationParameters): Simulatio
         }
       }
 
+      // Early Sequence Risk Stress Test: forces the simulation to use the 1st percentile of historical
+      // market drawdowns as a baseline shift for the first 3 years of the projection.
+      const isStressYear = enableStressTest && yr <= (stressTestYears || 3);
+      const baselineDrift = isStressYear
+        ? Math.log(Math.max(0.01, 1 + stressTestBaselineShift))
+        : pathAlphaDrift;
+
       // Calculate annual real return multiplier
-      // exp(alpha + drag + sigma * shock) - 1 + jump
-      const logReturn = (pathAlphaDrift + currentValuationDrag) + sigma * shock;
+      // exp(drift + drag + sigma * shock) - 1 + jump
+      const logReturn = (baselineDrift + currentValuationDrag) + sigma * shock;
       const annualReturn = Math.exp(logReturn) - 1 + jumpReturnEffect;
 
       // Apply return to wealth and add annual contribution
@@ -564,4 +589,92 @@ export function formatPercent(val: number, decimals = 1): string {
 export function formatMultiplier(val: number, decimals = 2): string {
   if (isNaN(val)) return '0.00x';
   return `${val.toFixed(decimals)}x`;
+}
+
+/**
+ * Currency conversion & exchange ratio engine
+ * USD serves as the global standard reference peg.
+ */
+export function getExchangeRatio(
+  fromCurrency: CurrencyCode = 'USD',
+  toCurrency: CurrencyCode = 'USD',
+  customRates?: Partial<Record<CurrencyCode, number>>
+): number {
+  if (fromCurrency === toCurrency) return 1.0;
+  const fromRate = customRates?.[fromCurrency] ?? CURRENCY_CONFIGS[fromCurrency]?.rateToUsd ?? 1.0;
+  const toRate = customRates?.[toCurrency] ?? CURRENCY_CONFIGS[toCurrency]?.rateToUsd ?? 1.0;
+  if (fromRate <= 0) return 1.0;
+  return toRate / fromRate;
+}
+
+export function convertCurrency(
+  amount: number,
+  fromCurrency: CurrencyCode = 'USD',
+  toCurrency: CurrencyCode = 'USD',
+  customRates?: Partial<Record<CurrencyCode, number>>
+): number {
+  if (isNaN(amount) || amount === 0) return 0;
+  if (fromCurrency === toCurrency) return amount;
+  const ratio = getExchangeRatio(fromCurrency, toCurrency, customRates);
+  return amount * ratio;
+}
+
+/**
+ * Cleanly rounds a converted currency figure to natural financial increments
+ * Avoids awkward fractions like ₦810,000,000.4132
+ */
+export function cleanRoundCurrency(val: number, currency: CurrencyCode): number {
+  if (isNaN(val) || val === 0) return 0;
+  const cfg = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS['USD'];
+  const rate = cfg.rateToUsd;
+
+  // For high-denomination currencies (e.g. NGN at 1350, XOF at 605, JPY at 152)
+  if (rate >= 500) {
+    if (val >= 1000000) {
+      // round to nearest 10,000
+      return Math.round(val / 10000) * 10000;
+    }
+    if (val >= 10000) {
+      // round to nearest 1,000
+      return Math.round(val / 1000) * 1000;
+    }
+    return Math.round(val / 100) * 100;
+  }
+
+  if (rate >= 50) {
+    if (val >= 100000) {
+      return Math.round(val / 1000) * 1000;
+    }
+    return Math.round(val / 10) * 10;
+  }
+
+  // Developed currencies (USD, EUR, GBP)
+  if (val >= 100000) {
+    return Math.round(val / 1000) * 1000;
+  }
+  if (val >= 1000) {
+    return Math.round(val / 100) * 100;
+  }
+  return Math.round(val);
+}
+
+/**
+ * Displays the Dual Dollar equivalent (or vice versa) for immediate comprehension
+ * e.g. "≈ $600,000 USD" or "≈ ₦810,000,000 NGN"
+ */
+export function formatCurrencyDual(
+  amount: number,
+  currentCurrency: CurrencyCode,
+  targetCurrency: CurrencyCode = 'USD',
+  customRates?: Partial<Record<CurrencyCode, number>>
+): string {
+  if (isNaN(amount)) return '';
+  if (currentCurrency === targetCurrency) {
+    // If user is currently in USD, show standard alternative currency (EUR)
+    const altCurrency: CurrencyCode = currentCurrency === 'USD' ? 'EUR' : 'USD';
+    const converted = convertCurrency(amount, currentCurrency, altCurrency, customRates);
+    return `≈ ${formatCurrencyCompact(converted, altCurrency)} ${altCurrency}`;
+  }
+  const converted = convertCurrency(amount, currentCurrency, targetCurrency, customRates);
+  return `≈ ${formatCurrency(converted, 0, targetCurrency)} USD`;
 }

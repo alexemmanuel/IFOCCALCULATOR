@@ -1,8 +1,65 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="w-full max-w-full overflow-x-hidden">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      /* Guard against Web3 extension collisions (MetaMask, Coinbase Wallet, etc.) */
+      (function() {
+        try {
+          const originalDefineProperty = Object.defineProperty;
+          Object.defineProperty = function(obj, prop, descriptor) {
+            if ((obj === window || obj === globalThis) && prop === 'ethereum') {
+              try {
+                return originalDefineProperty.call(Object, obj, prop, {
+                  ...descriptor,
+                  configurable: true
+                });
+              } catch (e) {
+                try {
+                  if (descriptor && 'value' in descriptor) {
+                    window.ethereum = descriptor.value;
+                  }
+                } catch (_) {}
+                return obj;
+              }
+            }
+            try {
+              return originalDefineProperty.apply(Object, arguments);
+            } catch (err) {
+              if (prop === 'ethereum') {
+                return obj;
+              }
+              throw err;
+            }
+          };
+        } catch (_) {}
+
+        window.addEventListener('error', function(event) {
+          if (
+            event.message &&
+            (event.message.includes('Cannot redefine property: ethereum') ||
+             event.message.includes('redefine property: ethereum'))
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          if (
+            event.reason &&
+            typeof event.reason.message === 'string' &&
+            (event.reason.message.includes('Cannot redefine property: ethereum') ||
+             event.reason.message.includes('redefine property: ethereum'))
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+    </script>
     <title>Investment Forecasting & Opportunity Cost Calculator</title>
     <meta name="description" content="Multi-horizon Monte Carlo forecasting, explicit uncertainty modeling, withdrawal opportunity cost analysis, and stability assessment up to 200 years." />
     <meta property="og:title" content="Investment Forecasting & Opportunity Cost Calculator" />
@@ -13,7 +70,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500/20 selection:text-cyan-200">
+  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500/20 selection:text-cyan-200 w-full max-w-full overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

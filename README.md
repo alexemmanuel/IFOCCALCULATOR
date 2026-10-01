@@ -30,13 +30,24 @@ A quantitative wealth forecasting and financial decision engine built with **Rea
 - **Stability Gauge**: Evaluates the probability of real purchasing power preservation and capital ruin across paths.
 - **Terminal Distribution & Sensitivity Matrix**: Real-time cross-tabulation of expected real return vs. volatility.
 
-### 5. Multi-Currency & FX Overlay
-- **Multi-Currency Support**: View calculations in **USD ($)**, **EUR (€)**, **GBP (£)**, **ZAR (R)**, **NGN (₦)**, and **KES (KSh)**.
+### 5. Dynamic Currency Conversion & Relative Ratio Engine
+- **Global USD Benchmark & Proportional Scaling**: Toggling currencies scales starting capital, monthly savings, and withdrawal figures by the exact relative foreign exchange ratio (e.g. `$600,000 USD` converts to `₦810,000,000 NGN` at `1 USD = ₦1,350 NGN`, and scales back cleanly without loss or distortion).
+- **Dual Dollar Equivalents**: Immediate dollar equivalent badges displayed under every input field (Initial Capital, Annual Savings, Cashflows) and outcome cards so investors in Naira (or other currencies) instantly see dollar values without manual conversions.
+- **Global Ratios & Converter Modal**: Interactive modal accessible from the Header and parameter consoles showing full matrix ratios vs. USD, custom rate calibration, and a two-way portfolio capital converter.
+- **Multi-Currency Support**: Covers USD ($), NGN (₦), ZAR (R), KES (KSh), EGP (E£), GHS (GH₵), MAD (DH), TND (DT), XOF (CFA), EUR (€), GBP (£), JPY (¥), AUD (A$), and CAD (CA$).
 - **Local vs. Common Purchasing Power**: Toggle between local-currency real returns and global base-currency equivalent real returns with currency depreciation overlays.
 
 ### 6. Curated Investment Universe & Search
 - Screen top global and African companies (e.g., Apple, Microsoft, Dangote Cement, MTN Group, Standard Bank, Naspers, Safaricom).
 - Instant metric lookup for P/E ratios, dividend yields, historical real CAGRs, and tier classifications.
+
+### 7. Executive PDF Report Generation (Institutional Record-Keeping)
+- **One-Click Download Report in Header**: Generates a high-density, multi-page quantitative forecast PDF document.
+- **Embedded High-Resolution Fan Chart**: Print-ready rendered SVG/canvas chart with shaded percentile dispersion envelopes ($P_5-P_{95}$, $P_{25}-P_{75}$) and median trajectory.
+- **Executive Metric Callouts**: Starting capital, median terminal wealth ($P_{50}$), $90\%$ dispersion span, probability of profit ($\ge 2\times$), ruin risk, and real CAGR.
+- **Assumptions & Epistemic Governance**: Comprehensive tabulation of $\mu$, $\sigma$, distribution geometry, valuation drag, and market tiers.
+- **Trajectory Milestones & 2D Sensitivity Grid**: Formatted tables across key milestone horizons and return-volatility scenarios.
+- **Audit & Compliance Sign-off**: Formal review blocks (Prepared By, Portfolio Reviewer, Compliance Auditor) with unique document reference IDs and regulatory notices.
 
 ---
 
@@ -44,6 +55,7 @@ A quantitative wealth forecasting and financial decision engine built with **Rea
 
 - **Framework**: [React 19](https://react.dev/) + [Vite](https://vitejs.dev/)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **PDF Engine**: [jsPDF](https://github.com/parallax/jsPDF) + HTML5 Canvas Vector Rendering
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Animations**: [Motion](https://motion.dev/)

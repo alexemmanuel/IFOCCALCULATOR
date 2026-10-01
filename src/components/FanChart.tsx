@@ -1,6 +1,7 @@
 import React, { useState, useId } from 'react';
 import { PercentilePoint, CurrencyCode } from '../types';
 import { formatCurrencyCompact, formatCurrency, formatMultiplier } from '../utils/financialEngine';
+import { CURRENCY_CONFIGS } from '../data/historicalData';
 
 interface FanChartProps {
   percentiles: PercentilePoint[];
@@ -12,6 +13,8 @@ interface FanChartProps {
   nominalInflationRate?: number;
   isNominal?: boolean;
   currency?: CurrencyCode;
+  liveRates?: Record<CurrencyCode, number>;
+  enableStressTest?: boolean;
 }
 
 export const FanChart: React.FC<FanChartProps> = ({
@@ -23,8 +26,11 @@ export const FanChart: React.FC<FanChartProps> = ({
   showSamplePaths = true,
   nominalInflationRate = 0,
   isNominal = false,
-  currency = 'USD'
+  currency = 'USD',
+  liveRates,
+  enableStressTest = false
 }) => {
+  const rateToUsd = liveRates?.[currency] ?? CURRENCY_CONFIGS[currency]?.rateToUsd ?? 1.0;
   const [useLogScale, setUseLogScale] = useState<boolean>(true);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const filterId = useId();
@@ -184,7 +190,7 @@ export const FanChart: React.FC<FanChartProps> = ({
       </div>
 
       {/* SVG Fan Chart Canvas */}
-      <div className="relative w-full aspect-[2/1] min-h-[300px] max-h-[460px] select-none">
+      <div id="fan-chart-container" className="relative w-full aspect-[2/1] min-h-[300px] max-h-[460px] select-none overflow-hidden">
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-full overflow-visible"
@@ -265,6 +271,33 @@ export const FanChart: React.FC<FanChartProps> = ({
               </g>
             );
           })}
+
+          {/* Stress Test Window Shading for Years 1–3 */}
+          {enableStressTest && (
+            <g>
+              <rect
+                x={getX(0)}
+                y={padding.top}
+                width={Math.max(1, getX(Math.min(3, numYears)) - getX(0))}
+                height={chartHeight}
+                fill="#f43f5e"
+                fillOpacity="0.10"
+                stroke="#f43f5e"
+                strokeOpacity="0.4"
+                strokeDasharray="4 4"
+              />
+              <text
+                x={getX(1.5)}
+                y={padding.top + 18}
+                fill="#fda4af"
+                fontSize="10"
+                textAnchor="middle"
+                className="font-mono font-semibold"
+              >
+                Stress Test (Y1–Y3: -37% Shift)
+              </text>
+            </g>
+          )}
 
           {/* Threshold reference lines */}
           {goodProfitThreshold && (
@@ -405,6 +438,11 @@ export const FanChart: React.FC<FanChartProps> = ({
           <span className="text-emerald-300 font-bold font-mono tabular-nums text-sm">
             {formatCurrency(activePoint.p50, 0, currency)}
           </span>
+          {currency !== 'USD' && (
+            <span className="text-[10px] text-emerald-400 font-mono block">
+              ≈ ${formatCurrencyCompact(activePoint.p50 / rateToUsd, 'USD')} USD
+            </span>
+          )}
           <span className="text-[10px] text-emerald-500 block font-mono">
             {formatMultiplier(activePoint.p50 / initialCapital)}
           </span>

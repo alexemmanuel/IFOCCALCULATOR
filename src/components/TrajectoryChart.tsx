@@ -101,7 +101,7 @@ export const TrajectoryChart: React.FC<TrajectoryChartProps> = ({
         )}
       </div>
 
-      <div className="relative w-full aspect-[2/1] min-h-[280px] max-h-[420px] select-none">
+      <div className="relative w-full aspect-[2/1] min-h-[280px] max-h-[420px] select-none overflow-hidden">
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-full overflow-visible"

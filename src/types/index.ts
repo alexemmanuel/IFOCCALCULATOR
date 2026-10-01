@@ -48,7 +48,8 @@ export type CurrencyCode =
   | 'TND'
   | 'XOF'
   | 'JPY'
-  | 'AUD';
+  | 'AUD'
+  | 'CAD';
 
 export interface CurrencyConfig {
   code: CurrencyCode;
@@ -86,6 +87,9 @@ export interface SimulationParameters {
   enableFxOverlay?: boolean;
   fxVolatilityOverlayPct?: number;       // e.g. 0.03 for 3% extra volatility drag
   widenedConfidenceBand?: boolean;
+  enableStressTest?: boolean;            // Forces 1st percentile historical drawdown shift for early sequence risk
+  stressTestYears?: number;              // default 3 years
+  stressTestBaselineShift?: number;      // 1st percentile historical market drawdown (e.g. -0.370)
 }
 
 export interface HorizonBandDefinition {

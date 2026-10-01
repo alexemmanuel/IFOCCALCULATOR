@@ -33,6 +33,7 @@ export const MarqueeTicker: React.FC<MarqueeTickerProps> = ({ onSelectInvestment
           return (
             <button
               key={`${item.id}-${index}`}
+              tabIndex={-1}
               onClick={() => onSelectInvestment(item)}
               className="flex items-center gap-2.5 mx-3.5 px-3 py-1 rounded-md bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 transition-all text-xs shrink-0 cursor-pointer group"
               title={`Click to inspect ${item.name} and simulate future path`}

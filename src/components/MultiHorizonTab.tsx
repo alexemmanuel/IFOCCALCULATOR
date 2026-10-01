@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { HORIZON_BANDS } from '../data/historicalData';
+import { HORIZON_BANDS, CURRENCY_CONFIGS } from '../data/historicalData';
 import { SimulationParameters, CurrencyCode } from '../types';
 import { runMonteCarloSimulation, formatCurrencyCompact, formatPercent, formatMultiplier } from '../utils/financialEngine';
 import { Layers, AlertTriangle, ArrowUpRight, Compass, ShieldCheck } from 'lucide-react';
@@ -8,13 +8,16 @@ interface MultiHorizonTabProps {
   baseParams: SimulationParameters;
   onSelectHorizon: (years: number) => void;
   currency?: CurrencyCode;
+  liveRates?: Record<CurrencyCode, number>;
 }
 
 export const MultiHorizonTab: React.FC<MultiHorizonTabProps> = ({
   baseParams,
   onSelectHorizon,
-  currency = 'USD'
+  currency = 'USD',
+  liveRates
 }) => {
+  const rateToUsd = liveRates?.[currency] ?? CURRENCY_CONFIGS[currency]?.rateToUsd ?? 1.0;
   // Pre-calculate metrics for each of the 8 standard horizon bands
   const horizonEvaluations = useMemo(() => {
     return HORIZON_BANDS.map(band => {
@@ -111,6 +114,11 @@ export const MultiHorizonTab: React.FC<MultiHorizonTabProps> = ({
                       <div className="text-[10px] text-slate-400">
                         {formatCurrencyCompact(sim.terminalWealthMedian, currency)}
                       </div>
+                      {currency !== 'USD' && (
+                        <div className="text-[9px] text-emerald-400 font-mono">
+                          ≈ {formatCurrencyCompact(sim.terminalWealthMedian / rateToUsd, 'USD')} USD
+                        </div>
+                      )}
                     </td>
 
                     {/* 5th to 95th Spread */}
@@ -121,6 +129,11 @@ export const MultiHorizonTab: React.FC<MultiHorizonTabProps> = ({
                       <div className="text-[10px] text-slate-500">
                         {formatCurrencyCompact(sim.terminalWealthP5, currency)} to {formatCurrencyCompact(sim.terminalWealthP95, currency)}
                       </div>
+                      {currency !== 'USD' && (
+                        <div className="text-[9px] text-emerald-400/90 font-mono">
+                          ≈ {formatCurrencyCompact(sim.terminalWealthP5 / rateToUsd, 'USD')} to {formatCurrencyCompact(sim.terminalWealthP95 / rateToUsd, 'USD')}
+                        </div>
+                      )}
                     </td>
 
                     {/* Probability of Good Profit */}

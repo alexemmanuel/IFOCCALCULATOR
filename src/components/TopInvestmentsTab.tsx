@@ -3,6 +3,7 @@ import { TOP_INVESTMENTS, TopInvestment, US_GDP_BILLIONS, GLOBAL_GDP_BILLIONS } 
 import { InvestmentModal } from './InvestmentModal';
 import { formatPercent, formatMultiplier } from '../utils/financialEngine';
 import { CurrencyCode } from '../types';
+import { CURRENCY_CONFIGS } from '../data/historicalData';
 import {
   Search,
   Filter,
@@ -22,13 +23,19 @@ interface TopInvestmentsTabProps {
   onSimulateAsset: (inv: TopInvestment) => void;
   onAnalyzeWithdrawals: (inv: TopInvestment) => void;
   reportingCurrency?: CurrencyCode;
+  liveRates?: Record<CurrencyCode, number>;
 }
 
 export const TopInvestmentsTab: React.FC<TopInvestmentsTabProps> = ({
   onSimulateAsset,
   onAnalyzeWithdrawals,
-  reportingCurrency = 'USD'
+  reportingCurrency = 'USD',
+  liveRates
 }) => {
+  const currCfg = CURRENCY_CONFIGS[reportingCurrency] || CURRENCY_CONFIGS['USD'];
+  const sym = currCfg.symbol;
+  const rateToUsd = liveRates?.[reportingCurrency] ?? currCfg.rateToUsd ?? 1.0;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'company' | 'africa' | 'institutional' | 'etf' | 'losses'>('all');
   const [sortBy, setSortBy] = useState<'market_cap' | 'percent_gdp' | 'cagr' | 'volatility' | 'drawdown'>('percent_gdp');
@@ -316,6 +323,12 @@ export const TopInvestmentsTab: React.FC<TopInvestmentsTabProps> = ({
                       ${(inv.marketCapBillions >= 1000 ? inv.marketCapBillions / 1000 : inv.marketCapBillions).toFixed(1)}
                       {inv.marketCapBillions >= 1000 ? 'T' : 'B'}
                     </span>
+                    {reportingCurrency !== 'USD' && (
+                      <span className="text-[10px] text-cyan-400 font-mono block mt-0.5">
+                        ≈ {sym}{((inv.marketCapBillions * rateToUsd) >= 1000 ? (inv.marketCapBillions * rateToUsd) / 1000 : (inv.marketCapBillions * rateToUsd)).toFixed(1)}
+                        {(inv.marketCapBillions * rateToUsd) >= 1000 ? 'T' : 'B'}
+                      </span>
+                    )}
                   </div>
 
                   <div className="bg-slate-950/60 p-2 rounded-lg border border-cyan-500/20 bg-cyan-950/10">

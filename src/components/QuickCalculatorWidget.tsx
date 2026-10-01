@@ -11,6 +11,7 @@ interface QuickCalculatorWidgetProps {
   annualContribution: number;
   onApplyToSimulation: (capital: number, contribution: number, years: number, ret: number) => void;
   currency?: CurrencyCode;
+  liveRates?: Record<CurrencyCode, number>;
   onOpenFullCalculator?: () => void;
 }
 
@@ -21,15 +22,26 @@ export const QuickCalculatorWidget: React.FC<QuickCalculatorWidgetProps> = ({
   annualContribution,
   onApplyToSimulation,
   currency = 'USD',
+  liveRates,
   onOpenFullCalculator
 }) => {
-  const sym = CURRENCY_CONFIGS[currency]?.symbol || '$';
+  const currCfg = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS['USD'];
+  const sym = currCfg.symbol;
+  const rateToUsd = liveRates?.[currency] ?? currCfg.rateToUsd ?? 1.0;
+
   const [calcCapital, setCalcCapital] = useState<number>(initialCapital);
   const [calcMonthlySavings, setCalcMonthlySavings] = useState<number>(Math.round(annualContribution / 12));
   const [calcYears, setCalcYears] = useState<number>(Math.min(50, horizonYears));
   const [calcReturnPct, setCalcReturnPct] = useState<number>(expectedReturn * 100);
-  const [earlyWithdrawalAmount, setEarlyWithdrawalAmount] = useState<number>(Math.max(1000, Math.round(initialCapital * 0.25)));
+  const [earlyWithdrawalAmount, setEarlyWithdrawalAmount] = useState<number>(Math.max(10, Math.round(initialCapital * 0.25)));
   const [earlyWithdrawalYear, setEarlyWithdrawalYear] = useState<number>(5);
+
+  // Sync state when props change due to currency conversion or parent updates
+  React.useEffect(() => {
+    setCalcCapital(initialCapital);
+    setCalcMonthlySavings(Math.round(annualContribution / 12));
+    setEarlyWithdrawalAmount(Math.max(10, Math.round(initialCapital * 0.25)));
+  }, [initialCapital, annualContribution, currency]);
 
   // Dynamic compound calculation
   const calculations = useMemo(() => {
@@ -117,49 +129,69 @@ export const QuickCalculatorWidget: React.FC<QuickCalculatorWidgetProps> = ({
       {/* Input controls grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div>
-          <label className="text-slate-400 block mb-1 font-medium">Starting Capital ({sym})</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-slate-400 font-medium truncate">Starting Capital ({sym})</label>
+          </div>
           <input
             type="number"
-            step={5000}
+            step={rateToUsd >= 100 ? 500000 : 5000}
             value={calcCapital}
             onChange={(e) => setCalcCapital(Math.max(0, Number(e.target.value)))}
             className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 font-mono text-xs focus:border-cyan-500 focus:outline-hidden"
           />
-          {/* Quick preset buttons */}
+          {currency !== 'USD' && (
+            <div className="text-[10px] text-emerald-400 font-mono mt-0.5">
+              ≈ ${Math.round(calcCapital / rateToUsd).toLocaleString()} USD
+            </div>
+          )}
+          {/* Quick preset buttons adjusted by rateToUsd */}
           <div className="flex gap-1 mt-1">
-            {[10000, 50000, 100000].map((amt) => (
-              <button
-                key={amt}
-                type="button"
-                onClick={() => setCalcCapital(amt)}
-                className="text-[10px] font-mono text-slate-400 hover:text-cyan-300 bg-slate-950 px-1 py-0.5 rounded border border-slate-800"
-              >
-                {sym}{amt / 1000}k
-              </button>
-            ))}
+            {[10000, 50000, 100000].map((baseAmt) => {
+              const scaled = Math.round((baseAmt * rateToUsd) / (rateToUsd >= 100 ? 10000 : 1000)) * (rateToUsd >= 100 ? 10000 : 1000);
+              return (
+                <button
+                  key={baseAmt}
+                  type="button"
+                  onClick={() => setCalcCapital(scaled)}
+                  className="text-[10px] font-mono text-slate-400 hover:text-cyan-300 bg-slate-950 px-1 py-0.5 rounded border border-slate-800"
+                >
+                  {sym}{scaled >= 1000000 ? `${(scaled / 1000000).toFixed(1)}M` : `${Math.round(scaled / 1000)}k`}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div>
-          <label className="text-slate-400 block mb-1 font-medium">Monthly Contribution ({sym})</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-slate-400 font-medium truncate">Monthly Savings ({sym})</label>
+          </div>
           <input
             type="number"
-            step={100}
+            step={rateToUsd >= 100 ? 25000 : 100}
             value={calcMonthlySavings}
             onChange={(e) => setCalcMonthlySavings(Math.max(0, Number(e.target.value)))}
             className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 font-mono text-xs focus:border-cyan-500 focus:outline-hidden"
           />
+          {currency !== 'USD' && (
+            <div className="text-[10px] text-emerald-400 font-mono mt-0.5">
+              ≈ ${Math.round(calcMonthlySavings / rateToUsd).toLocaleString()}/mo
+            </div>
+          )}
           <div className="flex gap-1 mt-1">
-            {[0, 250, 500, 1000].map((amt) => (
-              <button
-                key={amt}
-                type="button"
-                onClick={() => setCalcMonthlySavings(amt)}
-                className="text-[10px] font-mono text-slate-400 hover:text-cyan-300 bg-slate-950 px-1 py-0.5 rounded border border-slate-800"
-              >
-                {sym}{amt}
-              </button>
-            ))}
+            {[0, 250, 500, 1000].map((baseAmt) => {
+              const scaled = baseAmt === 0 ? 0 : Math.round((baseAmt * rateToUsd) / (rateToUsd >= 100 ? 1000 : 100)) * (rateToUsd >= 100 ? 1000 : 100);
+              return (
+                <button
+                  key={baseAmt}
+                  type="button"
+                  onClick={() => setCalcMonthlySavings(scaled)}
+                  className="text-[10px] font-mono text-slate-400 hover:text-cyan-300 bg-slate-950 px-1 py-0.5 rounded border border-slate-800"
+                >
+                  {baseAmt === 0 ? '0' : `${sym}${scaled >= 1000 ? `${Math.round(scaled / 1000)}k` : scaled}`}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -218,6 +250,11 @@ export const QuickCalculatorWidget: React.FC<QuickCalculatorWidgetProps> = ({
           <span className="text-base sm:text-lg font-bold font-mono text-slate-200">
             {formatCurrency(calculations.totalDeposits, 0, currency)}
           </span>
+          {currency !== 'USD' && (
+            <span className="text-[10px] text-emerald-400 font-mono block">
+              ≈ {formatCurrency(calculations.totalDeposits / rateToUsd, 0, 'USD')} USD
+            </span>
+          )}
           <span className="text-[10px] text-slate-500 block font-mono mt-0.5">
             Initial + {sym}{(calcMonthlySavings * 12).toLocaleString()}/yr
           </span>
@@ -228,6 +265,11 @@ export const QuickCalculatorWidget: React.FC<QuickCalculatorWidgetProps> = ({
           <span className="text-base sm:text-lg font-bold font-mono text-cyan-200">
             {formatCurrency(calculations.terminalWithout, 0, currency)}
           </span>
+          {currency !== 'USD' && (
+            <span className="text-[10px] text-emerald-400 font-mono block font-semibold">
+              ≈ {formatCurrency(calculations.terminalWithout / rateToUsd, 0, 'USD')} USD
+            </span>
+          )}
           <span className="text-[10px] text-cyan-400/80 block font-mono mt-0.5">
             {formatMultiplier(calculations.compoundMultiple)} total growth
           </span>
@@ -238,6 +280,11 @@ export const QuickCalculatorWidget: React.FC<QuickCalculatorWidgetProps> = ({
           <span className="text-base sm:text-lg font-bold font-mono text-emerald-300">
             +{formatCurrency(calculations.interestEarned, 0, currency)}
           </span>
+          {currency !== 'USD' && (
+            <span className="text-[10px] text-emerald-400 font-mono block">
+              ≈ +{formatCurrency(calculations.interestEarned / rateToUsd, 0, 'USD')} USD
+            </span>
+          )}
           <span className="text-[10px] text-emerald-500 block font-mono mt-0.5">
             Growth on growth
           </span>
@@ -250,6 +297,11 @@ export const QuickCalculatorWidget: React.FC<QuickCalculatorWidgetProps> = ({
           <span className="text-base sm:text-lg font-bold font-mono text-rose-300">
             -{formatCurrency(calculations.forfeitedGrowth, 0, currency)}
           </span>
+          {currency !== 'USD' && (
+            <span className="text-[10px] text-rose-400/90 font-mono block">
+              ≈ -{formatCurrency(calculations.forfeitedGrowth / rateToUsd, 0, 'USD')} USD
+            </span>
+          )}
           <span className="text-[10px] text-rose-400/80 block font-mono mt-0.5">
             Gains forfeited by cash-out
           </span>

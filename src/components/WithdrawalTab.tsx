@@ -14,8 +14,10 @@ import {
   extractHistoricalReturns,
   formatCurrency,
   formatPercent,
-  formatMultiplier
+  formatMultiplier,
+  cleanRoundCurrency
 } from '../utils/financialEngine';
+import { getRealTimeRatio } from '../services/realTimeCurrencyEngine';
 import {
   DollarSign,
   Plus,
@@ -37,6 +39,7 @@ interface WithdrawalTabProps {
   historicalData: HistoricalYearRecord[];
   inflationRate: number;
   currency?: CurrencyCode;
+  liveRates?: Record<CurrencyCode, number>;
   onSelectTab?: (tab: 'forecast' | 'withdrawal' | 'investments' | 'horizons' | 'historical' | 'methodology') => void;
 }
 
@@ -46,9 +49,13 @@ export const WithdrawalTab: React.FC<WithdrawalTabProps> = ({
   historicalData,
   inflationRate,
   currency = 'USD',
+  liveRates,
   onSelectTab
 }) => {
-  const sym = CURRENCY_CONFIGS[currency]?.symbol || '$';
+  const currCfg = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS['USD'];
+  const sym = currCfg.symbol;
+  const rateToUsd = liveRates?.[currency] ?? currCfg.rateToUsd ?? 1.0;
+
   // Mode: Simulated path vs Historical scenario
   const [operatingMode, setOperatingMode] = useState<'simulated' | 'historical'>('simulated');
   const [selectedSimPath, setSelectedSimPath] = useState<'median' | 'p25' | 'p5' | 'p75'>('median');
@@ -72,7 +79,7 @@ export const WithdrawalTab: React.FC<WithdrawalTabProps> = ({
       id: 'cf-2',
       year: 7,
       type: 'withdrawal',
-      amount: 40000,
+      amount: Math.round(40000 * rateToUsd),
       isPercentage: false,
       label: 'Capital expenditure / down payment'
     }
@@ -81,9 +88,29 @@ export const WithdrawalTab: React.FC<WithdrawalTabProps> = ({
   // Form for adding new cash flow
   const [newYear, setNewYear] = useState<number>(5);
   const [newType, setNewType] = useState<'withdrawal' | 'contribution'>('withdrawal');
-  const [newAmount, setNewAmount] = useState<number>(30000);
+  const [newAmount, setNewAmount] = useState<number>(Math.round(30000 * rateToUsd));
   const [newIsPercentage, setNewIsPercentage] = useState<boolean>(false);
   const [newLabel, setNewLabel] = useState<string>('Strategic rebalancing cash-out');
+
+  // Automatically scale fixed cashflows when reporting currency changes
+  const prevCurrencyRef = React.useRef<CurrencyCode>(currency);
+
+  React.useEffect(() => {
+    if (prevCurrencyRef.current !== currency) {
+      const ratio = getRealTimeRatio(prevCurrencyRef.current, currency, liveRates);
+      if (ratio > 0 && ratio !== 1) {
+        setCashFlows(prev =>
+          prev.map(cf =>
+            cf.isPercentage
+              ? cf
+              : { ...cf, amount: cleanRoundCurrency(cf.amount * ratio, currency) }
+          )
+        );
+        setNewAmount(prev => cleanRoundCurrency(prev * ratio, currency));
+      }
+      prevCurrencyRef.current = currency;
+    }
+  }, [currency]);
 
   // Calculate return series based on selected mode
   const currentScenario = HISTORICAL_SCENARIOS.find(s => s.id === selectedScenarioId) || HISTORICAL_SCENARIOS[3];
@@ -293,6 +320,11 @@ export const WithdrawalTab: React.FC<WithdrawalTabProps> = ({
               <div className="text-lg sm:text-xl font-bold font-mono text-amber-300 tabular-nums">
                 {formatCurrency(analysisResult.terminalWithWithdrawal, 0, currency)}
               </div>
+              {currency !== 'USD' && (
+                <div className="text-[10px] text-emerald-400 font-mono mt-0.5">
+                  ≈ {formatCurrency(analysisResult.terminalWithWithdrawal / rateToUsd, 0, 'USD')} USD
+                </div>
+              )}
               <span className="text-[10px] text-slate-500 font-mono mt-1 block">
                 Cash Extracted: {formatCurrency(analysisResult.totalWithdrawn, 0, currency)}
               </span>
@@ -303,6 +335,11 @@ export const WithdrawalTab: React.FC<WithdrawalTabProps> = ({
               <div className="text-lg sm:text-xl font-bold font-mono text-cyan-200 tabular-nums">
                 {formatCurrency(analysisResult.terminalWithoutWithdrawal, 0, currency)}
               </div>
+              {currency !== 'USD' && (
+                <div className="text-[10px] text-emerald-400 font-mono mt-0.5">
+                  ≈ {formatCurrency(analysisResult.terminalWithoutWithdrawal / rateToUsd, 0, 'USD')} USD
+                </div>
+              )}
               <span className="text-[10px] text-cyan-400/80 font-mono mt-1 block">
                 {formatMultiplier(analysisResult.terminalWithoutWithdrawal / initialCapital)} of starting
               </span>
@@ -507,11 +544,16 @@ export const WithdrawalTab: React.FC<WithdrawalTabProps> = ({
                 <input
                   type="number"
                   min={1}
-                  step={newIsPercentage ? 1 : 1000}
+                  step={newIsPercentage ? 1 : (rateToUsd >= 100 ? 50000 : 1000)}
                   value={newAmount}
                   onChange={(e) => setNewAmount(parseFloat(e.target.value) || 0)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-slate-100"
                 />
+                {!newIsPercentage && currency !== 'USD' && (
+                  <div className="text-[10px] text-emerald-400 font-mono mt-0.5">
+                    ≈ ${Math.round(newAmount / rateToUsd).toLocaleString()} USD
+                  </div>
+                )}
               </div>
 
               <div>
