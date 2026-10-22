@@ -9,7 +9,8 @@ import {
   SimulationParameters,
   SimulationResult,
   SensitivityMatrix,
-  CurrencyCode
+  CurrencyCode,
+  AnalyzedCompany
 } from '../types';
 import {
   formatCurrency,
@@ -27,6 +28,7 @@ export interface GeneratePdfReportOptions {
   currencyMode: 'local_real' | 'common_base';
   isNominal: boolean;
   selectedAssetClassId?: string;
+  analyzedCompany?: AnalyzedCompany;
 }
 
 /**
@@ -262,13 +264,17 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
     currency,
     currencyMode,
     isNominal,
-    selectedAssetClassId
+    selectedAssetClassId,
+    analyzedCompany
   } = options;
 
-  // Find asset class label
+  // Find asset class label & analyzed company details
   const preset = ASSET_CLASS_PRESETS.find(p => p.id === selectedAssetClassId);
-  const assetName = preset ? preset.name : (selectedAssetClassId === 'custom' ? 'Custom Portfolio' : 'US Equities (S&P 500 Baseline)');
-  const tierLabel = preset?.tier || (preset?.id?.includes('africa') ? 'Tier A-D' : 'Developed Market');
+  const companyName = analyzedCompany?.name || (preset ? preset.name : (selectedAssetClassId === 'custom' ? 'Custom Portfolio' : 'US Equities (S&P 500 Baseline)'));
+  const ticker = analyzedCompany?.ticker || (preset?.id === 'us_equities' ? 'SPY' : '');
+  const sector = analyzedCompany?.sector || preset?.description || 'Diversified Equity Benchmark';
+  const tierLabel = analyzedCompany?.tier || preset?.tier || (preset?.id?.includes('africa') ? 'Tier A-D' : 'Developed Market');
+  const entityTitle = ticker ? `${companyName} (${ticker})` : companyName;
 
   // Initialize jsPDF A4 portrait (210mm x 297mm)
   const doc = new jsPDF({
@@ -315,25 +321,26 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
   doc.setFillColor(accentCyan[0], accentCyan[1], accentCyan[2]);
   doc.rect(0, 23, pageWidth, 1.2, 'F');
 
-  // Top Header Text
+  // Top Header Text with Analyzed Company
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
-  doc.text('QUANTITATIVE WEALTH ADVISORY · INSTITUTIONAL RESEARCH', margin, 11);
+  doc.setFontSize(10);
+  const headerEntityText = `QUANTITATIVE WEALTH ADVISORY · ANALYZED: ${companyName.toUpperCase()}${ticker ? ` [${ticker}]` : ''}`;
+  doc.text(headerEntityText.length > 55 ? headerEntityText.substring(0, 52) + '...' : headerEntityText, margin, 11);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(203, 213, 225);
-  doc.text(`REPORT REF: ${reportId}  ·  CONFIDENTIAL RECORD`, pageWidth - margin, 11, { align: 'right' });
+  doc.text(`REPORT REF: ${reportId}  ·  CONFIDENTIAL`, pageWidth - margin, 11, { align: 'right' });
 
   doc.setFontSize(7.5);
-  doc.text(`Generated: ${formattedDate} ${formattedTime}  ·  Horizon: ${params.horizonYears} Years  ·  Iterations: ${params.numPaths.toLocaleString()}`, margin, 18);
+  doc.text(`Company / Subject: ${entityTitle}  ·  Horizon: ${params.horizonYears}Y  ·  Paths: ${params.numPaths.toLocaleString()}`, margin, 18);
   const pdfRate = CURRENCY_CONFIGS[currency]?.rateToUsd || 1.0;
   const currSym = CURRENCY_CONFIGS[currency]?.symbol || '$';
   doc.text(
     currency === 'USD'
-      ? `Base Currency: USD ($) · ${isNominal ? 'Nominal' : 'Real Purchasing Power'}`
-      : `Base Currency: ${currency} (1 USD = ${currSym}${pdfRate.toLocaleString()}) · ${isNominal ? 'Nominal' : 'Real Power'}`,
+      ? `Reporting Currency: USD ($) · ${isNominal ? 'Nominal' : 'Real Purchasing Power'}`
+      : `Reporting Currency: ${currency} (1 USD = ${currSym}${pdfRate.toLocaleString()}) · ${isNominal ? 'Nominal' : 'Real Power'}`,
     pageWidth - margin,
     18,
     { align: 'right' }
@@ -343,15 +350,16 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
   let cursorY = 32;
   doc.setTextColor(primaryNavy[0], primaryNavy[1], primaryNavy[2]);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(17);
-  doc.text('Stochastic Investment Forecast & Risk Summary', margin, cursorY);
+  doc.setFontSize(15.5);
+  const docTitle = `Investment Forecast: ${companyName}${ticker ? ` (${ticker})` : ''}`;
+  doc.text(docTitle.length > 48 ? docTitle.substring(0, 45) + '...' : docTitle, margin, cursorY);
 
   cursorY += 5.5;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
+  doc.setFontSize(8.5);
   doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
   doc.text(
-    `Benchmark Asset: ${assetName} [${tierLabel}] · Distribution: ${params.modelType.toUpperCase()} · Val. Drag: ${(params.valuationDragPct * 100).toFixed(1)}%`,
+    `Analyzed Entity: ${entityTitle} · Sector: ${sector.length > 38 ? sector.substring(0, 35) + '...' : sector} · Confidence: ${tierLabel} · Distribution: ${params.modelType.toUpperCase()}`,
     margin,
     cursorY
   );
@@ -465,14 +473,17 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
   const tableRows = [
     [
       {
+        label: 'Analyzed Investment',
+        val: entityTitle.length > 25 ? entityTitle.substring(0, 23) + '..' : entityTitle
+      },
+      {
         label: 'Initial Investment',
         val: currency !== 'USD'
           ? `${formatCurrency(params.initialCapital, 0, currency)} (≈$${Math.round(params.initialCapital / pdfRate).toLocaleString()})`
           : formatCurrency(params.initialCapital, 0, currency)
       },
       { label: 'Expected Real Return (μ)', val: formatPercent(params.expectedRealReturn) },
-      { label: 'Annual Volatility (σ)', val: formatPercent(params.annualVolatility) },
-      { label: 'Inflation Baseline (π)', val: formatPercent(params.inflationRate) }
+      { label: 'Annual Volatility (σ)', val: formatPercent(params.annualVolatility) }
     ],
     [
       { label: 'Simulation Horizon', val: `${params.horizonYears} Years` },
@@ -484,7 +495,7 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
       { label: 'Data Confidence Tier', val: tierLabel },
       { label: 'Epistemic Uncertainty', val: params.widenedConfidenceBand ? 'Widened SE Bands Active' : 'Standard Asymptotic' },
       { label: 'FX Overlay Adjustment', val: params.enableFxOverlay ? `Active (+${((params.fxVolatilityOverlayPct || 0.03) * 100).toFixed(1)}% Vol)` : 'Standard Rate' },
-      { label: 'PRNG Reproducibility Seed', val: params.seed ? `#${params.seed}` : 'Deterministic' }
+      { label: 'Inflation Baseline (π)', val: formatPercent(params.inflationRate) }
     ]
   ];
 
@@ -526,7 +537,7 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.8);
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  const takeawayText = `Over a ${params.horizonYears}-year horizon in ${currency} terms, an initial portfolio of ${formatCurrency(params.initialCapital, 0, currency)} yields a median terminal outcome of ${formatCurrency(simResult.terminalWealthMedian, 0, currency)} (${formatMultiplier(simResult.terminalWealthMedian / params.initialCapital)} capital). Real purchasing power compounding has a ${formatPercent(simResult.probGoodProfits)} likelihood of exceeding a 2.0x multiple, with a ${formatPercent(simResult.probFailure)} downside probability of real capital impairment.`;
+  const takeawayText = `For ${entityTitle}, over a ${params.horizonYears}-year horizon in ${currency} terms, an initial portfolio allocation of ${formatCurrency(params.initialCapital, 0, currency)} yields a median terminal outcome of ${formatCurrency(simResult.terminalWealthMedian, 0, currency)} (${formatMultiplier(simResult.terminalWealthMedian / params.initialCapital)} capital). Real purchasing power compounding has a ${formatPercent(simResult.probGoodProfits)} likelihood of exceeding a 2.0x multiple, with a ${formatPercent(simResult.probFailure)} downside risk of capital impairment under modeled volatility (${(params.annualVolatility * 100).toFixed(1)}%).`;
   const splitTakeaway = doc.splitTextToSize(takeawayText, contentWidth - 10);
   doc.text(splitTakeaway, margin + 5, cursorY + 10);
 
@@ -535,7 +546,7 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
   doc.setFontSize(7.5);
   doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
   doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
-  doc.text(`Document Reference: ${reportId}  ·  Investment Forecaster v1.0`, margin, pageHeight - 7.5);
+  doc.text(`Document Reference: ${reportId}  ·  Analyzed: ${entityTitle}  ·  Investment Forecaster v1.0`, margin, pageHeight - 7.5);
   doc.text('Page 1 of 2', pageWidth - margin, pageHeight - 7.5, { align: 'right' });
 
   /* =====================================================================
@@ -552,7 +563,8 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
-  doc.text('QUANTITATIVE SENSITIVITY & TRAJECTORY BREAKDOWN', margin, 10);
+  const page2Header = `QUANTITATIVE SENSITIVITY & TRAJECTORY · ${companyName.toUpperCase()}${ticker ? ` (${ticker})` : ''}`;
+  doc.text(page2Header.length > 55 ? page2Header.substring(0, 52) + '...' : page2Header, margin, 10);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(203, 213, 225);
@@ -564,7 +576,7 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(primaryNavy[0], primaryNavy[1], primaryNavy[2]);
-  doc.text('Multi-Year Percentile Trajectory Breakdown', margin, cursorY);
+  doc.text(`${entityTitle} Multi-Year Percentile Trajectory Breakdown`, margin, cursorY);
 
   cursorY += 4.5;
 
@@ -758,7 +770,7 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
   cursorY += 3.5;
   const signColWidth = (contentWidth - 6) / 3;
   const signBoxes = [
-    { title: 'PREPARED BY', role: 'Quantitative Risk Modeling Engine v1.0', sign: 'Verified Algorithmic Run' },
+    { title: 'PREPARED FOR', role: `Stochastic Analysis: ${entityTitle}`, sign: 'Verified Algorithmic Run' },
     { title: 'PORTFOLIO MANAGER REVIEW', role: 'Asset Allocation Committee', sign: 'Approved for Client Record' },
     { title: 'COMPLIANCE / RISK AUDIT', role: 'Investment Policy Statement (IPS)', sign: 'Compliant with IPS Mandate' }
   ];
@@ -808,10 +820,14 @@ export async function generateExecutiveSummaryPdf(options: GeneratePdfReportOpti
   doc.setFontSize(7.5);
   doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
   doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
-  doc.text(`Document Reference: ${reportId}  ·  CONFIDENTIAL  ·  Investment Forecaster`, margin, pageHeight - 7.5);
+  doc.text(`Document Reference: ${reportId}  ·  Analyzed Entity: ${entityTitle}  ·  CONFIDENTIAL`, margin, pageHeight - 7.5);
   doc.text('Page 2 of 2', pageWidth - margin, pageHeight - 7.5, { align: 'right' });
 
-  // Save / Trigger Download
-  const filename = `Investment_Forecast_Report_${params.horizonYears}Y_${currency}_${reportId}.pdf`;
+  // Save / Trigger Download - carries analyzed company name and ticker
+  const sanitizeFilename = (str: string) => str.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  const safeCompany = sanitizeFilename(companyName);
+  const safeTicker = ticker ? sanitizeFilename(ticker) : '';
+  const filePrefix = safeTicker ? `${safeCompany}_${safeTicker}` : safeCompany;
+  const filename = `${filePrefix}_Investment_Forecast_Report_${params.horizonYears}Y_${currency}_${reportId}.pdf`;
   doc.save(filename);
 }

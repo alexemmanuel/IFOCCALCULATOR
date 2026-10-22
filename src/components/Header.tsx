@@ -1,6 +1,5 @@
-import React from 'react';
 import { Download, ShieldAlert, AlertTriangle, Sparkles, RefreshCw, Sun, Moon, Calculator, Globe, FileDown, Loader2, ChevronDown } from 'lucide-react';
-import { CurrencyCode } from '../types';
+import { CurrencyCode, AnalyzedCompany } from '../types';
 import { CURRENCY_CONFIGS } from '../data/historicalData';
 
 interface HeaderProps {
@@ -24,6 +23,7 @@ interface HeaderProps {
   onDownloadReport: () => void;
   isGeneratingPdf?: boolean;
   onResetDefaults: () => void;
+  analyzedCompany?: AnalyzedCompany;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -46,7 +46,8 @@ export const Header: React.FC<HeaderProps> = ({
   onExportData,
   onDownloadReport,
   isGeneratingPdf = false,
-  onResetDefaults
+  onResetDefaults,
+  analyzedCompany
 }) => {
   const currentCurr = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS['USD'];
   const activeRate = liveRates?.[currency] ?? currentCurr.rateToUsd;
@@ -244,7 +245,7 @@ export const Header: React.FC<HeaderProps> = ({
           ? 'bg-cyan-950/40 text-cyan-400 border border-cyan-600/50 cursor-wait'
           : 'bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 dark:text-cyan-300 light:text-cyan-800 border border-cyan-500/40 active:scale-95'
       }`}
-      title="Download executive PDF summary document"
+      title={`Download executive PDF report for ${analyzedCompany?.name || 'investment'}`}
     >
       {isGeneratingPdf ? (
         <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400 shrink-0" />
@@ -259,7 +260,7 @@ export const Header: React.FC<HeaderProps> = ({
     <button
       onClick={onExportData}
       className="p-1.5 text-xs font-medium text-slate-300 dark:text-slate-300 light:text-slate-700 bg-slate-900 dark:bg-slate-900 light:bg-slate-100 border border-slate-800 dark:border-slate-800 light:border-slate-200 hover:bg-slate-800 rounded-lg transition-colors flex items-center shrink-0"
-      title="Export raw JSON simulation data"
+      title={`Export raw JSON simulation data for ${analyzedCompany?.name || 'investment'}`}
     >
       <Download className="w-4 h-4 text-slate-400 shrink-0" />
     </button>

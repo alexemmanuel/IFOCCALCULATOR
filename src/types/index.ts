@@ -21,6 +21,20 @@ export type AssetClassId =
 
 export type ConfidenceTier = 'Tier A' | 'Tier B' | 'Tier C' | 'Tier D' | 'Developed' | 'Emerging';
 
+export interface AnalyzedCompany {
+  name: string;
+  ticker?: string;
+  type?: 'company' | 'etf' | 'institutional' | 'benchmark';
+  sector?: string;
+  country?: string;
+  region?: string;
+  tier?: ConfidenceTier;
+  marketCapBillions?: number;
+  description?: string;
+  fiveYearCagr?: number;
+  annualVolatility?: number;
+}
+
 export interface AssetClassPreset {
   id: AssetClassId;
   name: string;

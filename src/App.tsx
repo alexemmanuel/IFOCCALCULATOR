@@ -10,9 +10,10 @@ import {
   SensitivityMatrix,
   AssetClassId,
   HistoricalYearRecord,
-  CurrencyCode
+  CurrencyCode,
+  AnalyzedCompany
 } from './types';
-import { HISTORICAL_ANNUAL_RETURNS, CURRENCY_CONFIGS } from './data/historicalData';
+import { HISTORICAL_ANNUAL_RETURNS, CURRENCY_CONFIGS, ASSET_CLASS_PRESETS } from './data/historicalData';
 import { runMonteCarloSimulation, computeSensitivityMatrix, cleanRoundCurrency } from './utils/financialEngine';
 import { fetchLiveExchangeRates, BASELINE_MARKET_RATES, getRealTimeRatio } from './services/realTimeCurrencyEngine';
 import { generateExecutiveSummaryPdf } from './utils/pdfReportGenerator';
@@ -59,10 +60,23 @@ const DEFAULT_PARAMS: SimulationParameters = {
   stressTestBaselineShift: -0.370
 };
 
+const DEFAULT_ANALYZED_COMPANY: AnalyzedCompany = {
+  name: 'S&P 500 Index (US Equities Baseline)',
+  ticker: 'SPY',
+  type: 'benchmark',
+  sector: 'US Large Cap Equities Benchmark',
+  country: 'United States',
+  region: 'North America',
+  tier: 'Developed',
+  fiveYearCagr: 0.065,
+  annualVolatility: 0.19
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'forecast' | 'withdrawal' | 'investments' | 'horizons' | 'historical' | 'methodology'>('forecast');
   const [params, setParams] = useState<SimulationParameters>(DEFAULT_PARAMS);
   const [selectedAssetClass, setSelectedAssetClass] = useState<AssetClassId>('us_equities');
+  const [analyzedCompany, setAnalyzedCompany] = useState<AnalyzedCompany>(DEFAULT_ANALYZED_COMPANY);
   const [isNominal, setIsNominal] = useState<boolean>(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [isDisclaimersOpen, setIsDisclaimersOpen] = useState<boolean>(false);
@@ -222,21 +236,85 @@ export default function App() {
     handleRunSimulation
   ]);
 
+  // Handler when user switches preset benchmark
+  const handleSelectAssetClass = useCallback((id: AssetClassId) => {
+    setSelectedAssetClass(id);
+    const preset = ASSET_CLASS_PRESETS.find(p => p.id === id);
+    if (preset) {
+      setAnalyzedCompany({
+        name: preset.name,
+        ticker: id === 'us_equities' ? 'SPY' : (id === 'africa_tier_a_sa' ? 'JSE' : undefined),
+        type: 'benchmark',
+        sector: preset.description,
+        region: preset.region,
+        tier: preset.tier,
+        fiveYearCagr: preset.expectedRealReturn,
+        annualVolatility: preset.annualVolatility
+      });
+    }
+  }, []);
+
+  // Direct Company Selection Handler
+  const handleSelectAnalyzedCompany = useCallback((company: AnalyzedCompany) => {
+    setAnalyzedCompany(company);
+    setSelectedAssetClass('custom');
+    if (company.fiveYearCagr !== undefined && company.annualVolatility !== undefined) {
+      const updated: SimulationParameters = {
+        ...params,
+        expectedRealReturn: company.fiveYearCagr,
+        annualVolatility: company.annualVolatility,
+        widenedConfidenceBand: company.tier === 'Tier B' || company.tier === 'Tier C'
+      };
+      setParams(updated);
+      handleRunSimulation(updated);
+    }
+  }, [params, handleRunSimulation]);
+
   // Handler to load any investment into the Monte Carlo Forecaster
   const handleSimulateAsset = useCallback((inv: TopInvestment) => {
     setSelectedAssetClass('custom');
-    setParams(prev => ({
-      ...prev,
+    const companyInfo: AnalyzedCompany = {
+      name: inv.name,
+      ticker: inv.ticker,
+      type: inv.type,
+      sector: inv.sector,
+      country: inv.country,
+      region: inv.region,
+      tier: inv.tier,
+      marketCapBillions: inv.marketCapBillions,
+      description: inv.description,
+      fiveYearCagr: inv.fiveYearCagr,
+      annualVolatility: inv.annualVolatility
+    };
+    setAnalyzedCompany(companyInfo);
+    const updated: SimulationParameters = {
+      ...params,
       expectedRealReturn: inv.fiveYearCagr,
       annualVolatility: inv.annualVolatility,
       widenedConfidenceBand: inv.tier === 'Tier B' || inv.tier === 'Tier C'
-    }));
+    };
+    setParams(updated);
+    handleRunSimulation(updated);
     setActiveTab('forecast');
-  }, []);
+  }, [params, handleRunSimulation]);
 
   // Handler to load any investment into the Withdrawal Calculator
   const handleAnalyzeWithdrawalAsset = useCallback((inv: TopInvestment) => {
     setSelectedAssetClass('custom');
+    const companyInfo: AnalyzedCompany = {
+      name: inv.name,
+      ticker: inv.ticker,
+      type: inv.type,
+      sector: inv.sector,
+      country: inv.country,
+      region: inv.region,
+      tier: inv.tier,
+      marketCapBillions: inv.marketCapBillions,
+      description: inv.description,
+      fiveYearCagr: inv.fiveYearCagr,
+      annualVolatility: inv.annualVolatility
+    };
+    setAnalyzedCompany(companyInfo);
     setParams(prev => ({
       ...prev,
       expectedRealReturn: inv.fiveYearCagr,
@@ -251,10 +329,26 @@ export default function App() {
     setSelectedInvestmentModal(inv);
   }, []);
 
-  // Export Data Handler (CSV or JSON)
+  // Export Data Handler (CSV or JSON) carrying analyzed company name
   const handleExportData = () => {
+    const sanitizeFilename = (str: string) => str.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+    const safeCompany = sanitizeFilename(analyzedCompany.name);
+    const safeTicker = analyzedCompany.ticker ? sanitizeFilename(analyzedCompany.ticker) : '';
+    const filePrefix = safeTicker ? `${safeCompany}_${safeTicker}` : safeCompany;
+
     const exportObject = {
       title: "Investment Forecasting & Opportunity Cost Calculator",
+      analyzedCompany: {
+        name: analyzedCompany.name,
+        ticker: analyzedCompany.ticker || "N/A",
+        type: analyzedCompany.type || "company",
+        sector: analyzedCompany.sector || "N/A",
+        country: analyzedCompany.country || "N/A",
+        region: analyzedCompany.region || "N/A",
+        tier: analyzedCompany.tier || "N/A",
+        marketCapBillions: analyzedCompany.marketCapBillions || null,
+        description: analyzedCompany.description || null
+      },
       version: "1.0",
       generatedAt: new Date().toISOString(),
       parameters: params,
@@ -285,13 +379,13 @@ export default function App() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObject, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `investment_forecast_${params.horizonYears}y_${currency}_${Date.now()}.json`);
+    downloadAnchor.setAttribute("download", `${filePrefix}_investment_forecast_${params.horizonYears}y_${currency}_${Date.now()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
   };
 
-  // State and handler for generating executive PDF report
+  // State and handler for generating executive PDF report carrying analyzed company name
   const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
 
   const handleDownloadReport = useCallback(async () => {
@@ -304,18 +398,20 @@ export default function App() {
         currency,
         currencyMode,
         isNominal,
-        selectedAssetClassId: selectedAssetClass
+        selectedAssetClassId: selectedAssetClass,
+        analyzedCompany
       });
     } catch (err) {
       console.error('Failed to generate PDF summary report:', err);
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [params, simResult, sensitivityMatrix, currency, currencyMode, isNominal, selectedAssetClass]);
+  }, [params, simResult, sensitivityMatrix, currency, currencyMode, isNominal, selectedAssetClass, analyzedCompany]);
 
   const handleResetDefaults = () => {
     setParams(DEFAULT_PARAMS);
     setSelectedAssetClass('us_equities');
+    setAnalyzedCompany(DEFAULT_ANALYZED_COMPANY);
     setIsNominal(false);
     setCurrency('USD');
     setCurrencyMode('local_real');
@@ -353,6 +449,7 @@ export default function App() {
         onDownloadReport={handleDownloadReport}
         isGeneratingPdf={isGeneratingPdf}
         onResetDefaults={handleResetDefaults}
+        analyzedCompany={analyzedCompany}
       />
 
       {/* Dynamic Marquee Sliding Ticker Showing Leading Investments, % GDP, Gains & Losses */}
@@ -369,7 +466,9 @@ export default function App() {
             onRunSimulation={handleRunSimulation}
             isNominal={isNominal}
             selectedAssetClass={selectedAssetClass}
-            setSelectedAssetClass={setSelectedAssetClass}
+            setSelectedAssetClass={handleSelectAssetClass}
+            analyzedCompany={analyzedCompany}
+            onSelectCompany={handleSelectAnalyzedCompany}
             currency={currency}
             onCurrencyChange={handleCurrencyChange}
             liveRates={liveRates}

@@ -5,9 +5,11 @@ import {
   SensitivityMatrix,
   AssetClassId,
   DistributionModel,
-  CurrencyCode
+  CurrencyCode,
+  AnalyzedCompany
 } from '../types';
 import { ASSET_CLASS_PRESETS, HORIZON_BANDS, CURRENCY_CONFIGS } from '../data/historicalData';
+import { TOP_INVESTMENTS } from '../data/topInvestments';
 import { FanChart } from './FanChart';
 import { DistributionChart } from './DistributionChart';
 import { SensitivityTable } from './SensitivityTable';
@@ -42,7 +44,8 @@ import {
   ArrowRightLeft,
   Check,
   RefreshCw,
-  ChevronDown
+  ChevronDown,
+  Building2
 } from 'lucide-react';
 
 interface ForecastTabProps {
@@ -68,6 +71,8 @@ interface ForecastTabProps {
   onSelectTab?: (tab: 'forecast' | 'withdrawal' | 'investments' | 'horizons' | 'historical' | 'methodology') => void;
   onDownloadReport?: () => void;
   isGeneratingPdf?: boolean;
+  analyzedCompany?: AnalyzedCompany;
+  onSelectCompany?: (c: AnalyzedCompany) => void;
 }
 
 export const ForecastTab: React.FC<ForecastTabProps> = ({
@@ -92,7 +97,9 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
   onToggleFxOverlay,
   onSelectTab,
   onDownloadReport,
-  isGeneratingPdf = false
+  isGeneratingPdf = false,
+  analyzedCompany,
+  onSelectCompany
 }) => {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showSampleGhostPaths, setShowSampleGhostPaths] = useState(true);
@@ -102,6 +109,12 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
   const isAfricanCurrency = currConfig.isAfrican;
   const currentPreset = ASSET_CLASS_PRESETS.find(p => p.id === selectedAssetClass);
   const isTierBorC = currentPreset?.tier === 'Tier B' || currentPreset?.tier === 'Tier C';
+
+  // Analyzed Company / Subject Entity metadata
+  const displayCompanyName = analyzedCompany?.name || currentPreset?.name || 'US Equities (S&P 500 Baseline)';
+  const displayTicker = analyzedCompany?.ticker || (selectedAssetClass === 'us_equities' ? 'SPY' : '');
+  const displaySector = analyzedCompany?.sector || currentPreset?.description || 'Diversified Equity Benchmark';
+  const displayTier = analyzedCompany?.tier || currentPreset?.tier || 'Developed';
 
   // The converter dynamically binds to the active navbar reporting currency (defaulting to EUR if active is USD)
   const converterCurrency: CurrencyCode = currency !== 'USD' ? currency : 'EUR';
@@ -363,6 +376,109 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>Simulate</span>
               </button>
+            </div>
+
+            {/* Analyzed Company / Asset under Evaluation */}
+            <div className="bg-slate-950/80 border border-cyan-500/30 rounded-xl p-3 sm:p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 shrink-0">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase tracking-wider text-cyan-400 font-bold block">
+                      Analyzed Investment / Subject
+                    </span>
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-100 truncate">
+                      {displayCompanyName}
+                      {displayTicker && <span className="ml-1.5 text-cyan-400 font-mono text-xs">({displayTicker})</span>}
+                    </h3>
+                  </div>
+                </div>
+
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0 font-bold border ${
+                  displayTier === 'Tier A'
+                    ? 'bg-emerald-950/70 text-emerald-300 border-emerald-700/60'
+                    : displayTier === 'Tier B'
+                    ? 'bg-amber-950/70 text-amber-300 border-amber-700/60'
+                    : 'bg-cyan-950/70 text-cyan-300 border-cyan-700/60'
+                }`}>
+                  {displayTier}
+                </span>
+              </div>
+
+              {/* Company Quick-Switcher Dropdown */}
+              <div className="relative">
+                <select
+                  value={
+                    analyzedCompany?.ticker
+                      ? (TOP_INVESTMENTS.some(i => i.ticker === analyzedCompany.ticker) ? analyzedCompany.ticker : selectedAssetClass)
+                      : selectedAssetClass
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const matchedInv = TOP_INVESTMENTS.find(i => i.ticker === val || i.id === val);
+                    if (matchedInv && onSelectCompany) {
+                      onSelectCompany({
+                        name: matchedInv.name,
+                        ticker: matchedInv.ticker,
+                        type: matchedInv.type,
+                        sector: matchedInv.sector,
+                        country: matchedInv.country,
+                        region: matchedInv.region,
+                        tier: matchedInv.tier,
+                        marketCapBillions: matchedInv.marketCapBillions,
+                        description: matchedInv.description,
+                        fiveYearCagr: matchedInv.fiveYearCagr,
+                        annualVolatility: matchedInv.annualVolatility
+                      });
+                    } else {
+                      handleAssetPresetChange(val as AssetClassId);
+                    }
+                  }}
+                  className="w-full bg-slate-900 border border-slate-700 hover:border-cyan-500 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs font-medium focus:outline-hidden focus:border-cyan-400 cursor-pointer"
+                  title="Switch the active analyzed company or asset benchmark"
+                >
+                  <optgroup label="🏆 Global Megacaps & Technology" className="bg-slate-900 text-amber-400 font-bold">
+                    {TOP_INVESTMENTS.filter(i => i.region !== 'Africa' && i.type === 'company').map(i => (
+                      <option key={i.id} value={i.ticker} className="bg-slate-900 text-slate-100 font-normal">
+                        {i.name} ({i.ticker}) · {(i.fiveYearCagr * 100).toFixed(1)}% 5Y CAGR
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🌍 African Champions & Leaders" className="bg-slate-900 text-amber-400 font-bold">
+                    {TOP_INVESTMENTS.filter(i => i.region === 'Africa').map(i => (
+                      <option key={i.id} value={i.ticker} className="bg-slate-900 text-slate-100 font-normal">
+                        {i.name} ({i.ticker}) · {i.country} · {(i.fiveYearCagr * 100).toFixed(1)}% CAGR
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🌐 Global ETFs & Index Funds" className="bg-slate-900 text-amber-400 font-bold">
+                    {TOP_INVESTMENTS.filter(i => i.type === 'etf' || i.type === 'institutional').map(i => (
+                      <option key={i.id} value={i.ticker} className="bg-slate-900 text-slate-100 font-normal">
+                        {i.name} ({i.ticker}) · {(i.fiveYearCagr * 100).toFixed(1)}% CAGR
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="📊 Standard Market Presets (1900–Present)" className="bg-slate-900 text-amber-400 font-bold">
+                    {ASSET_CLASS_PRESETS.map(p => (
+                      <option key={p.id} value={p.id} className="bg-slate-900 text-slate-100 font-normal">
+                        {p.name} · {(p.expectedRealReturn * 100).toFixed(1)}% Real Ret
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Sub-label showing analyzed details */}
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+                <span className="truncate max-w-[200px]" title={displaySector}>
+                  {displaySector}
+                </span>
+                <span className="font-mono text-cyan-400 shrink-0 font-medium">
+                  {(params.expectedRealReturn * 100).toFixed(1)}% ret · {(params.annualVolatility * 100).toFixed(1)}% vol
+                </span>
+              </div>
             </div>
 
             {/* Stress Test: Early Sequence Risk Toggle */}
@@ -772,13 +888,13 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 border border-slate-800/80 rounded-xl px-4 py-3">
             <div>
               <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                <span>Simulation Outcomes & Wealth Trajectory</span>
+                <span>Simulation Outcomes: {displayCompanyName} {displayTicker ? `(${displayTicker})` : ''}</span>
                 <span className="text-[11px] font-normal text-slate-400">
                   ({params.horizonYears}y · {params.numPaths.toLocaleString()} paths)
                 </span>
               </h2>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Multi-horizon probabilistic quantiles with explicit epistemic uncertainty modeling
+                Multi-horizon probabilistic quantiles calculated for {displayCompanyName} under {params.modelType.toUpperCase()} modeling
               </p>
             </div>
 
@@ -789,9 +905,9 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-auto shadow-xs ${
                   isGeneratingPdf
                     ? 'bg-cyan-950/40 text-cyan-400 border border-cyan-700/50 cursor-wait'
-                    : 'bg-gradient-to-r from-cyan-600/20 to-blue-600/20 hover:from-cyan-600/30 hover:to-blue-600/30 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400/60 active:scale-95'
+                    : 'bg-gradient-to-r from-cyan-600/20 to-blue-600/20 hover:from-cyan-600/30 hover:to-blue-600/30 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400/60 active:scale-95 cursor-pointer'
                 }`}
-                title="Generate and download institutional summary PDF"
+                title={`Generate and download institutional summary PDF report for ${displayCompanyName}`}
               >
                 {isGeneratingPdf ? (
                   <>
@@ -801,7 +917,7 @@ export const ForecastTab: React.FC<ForecastTabProps> = ({
                 ) : (
                   <>
                     <FileDown className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Download Report (PDF)</span>
+                    <span>Download Report: {displayTicker || displayCompanyName.split(' ')[0]} (PDF)</span>
                   </>
                 )}
               </button>
