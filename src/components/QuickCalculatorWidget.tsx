@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calculator, ArrowRight, DollarSign, Percent, TrendingUp, Sparkles, RefreshCw, ExternalLink } from 'lucide-react';
+import { Calculator, ArrowRight, DollarSign, Percent, TrendingUp, RefreshCw, ExternalLink } from 'lucide-react';
 import { formatCurrency, formatMultiplier, formatPercent } from '../utils/financialEngine';
 import { CurrencyCode } from '../types';
 import { CURRENCY_CONFIGS } from '../data/historicalData';

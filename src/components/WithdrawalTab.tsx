@@ -29,7 +29,6 @@ import {
   TrendingUp,
   Percent,
   History,
-  Sparkles,
   Calculator
 } from 'lucide-react';
 
@@ -456,7 +455,7 @@ export const WithdrawalTab: React.FC<WithdrawalTabProps> = ({
           {/* Quick Presets */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <Layers className="w-3.5 h-3.5 text-cyan-400" />
               <span>Withdrawal Scenarios</span>
             </h3>
             <div className="grid grid-cols-2 gap-2 text-xs">

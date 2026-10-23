@@ -1,4 +1,4 @@
-import { Download, ShieldAlert, AlertTriangle, Sparkles, RefreshCw, Sun, Moon, Calculator, Globe, FileDown, Loader2, ChevronDown } from 'lucide-react';
+import { Download, ShieldAlert, AlertTriangle, RefreshCw, Sun, Moon, Calculator, Globe, FileDown, Loader2, ChevronDown } from 'lucide-react';
 import { CurrencyCode, AnalyzedCompany } from '../types';
 import { CURRENCY_CONFIGS } from '../data/historicalData';
 

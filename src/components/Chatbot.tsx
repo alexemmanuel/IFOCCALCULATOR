@@ -20,7 +20,6 @@ import {
 import { formatCurrency, formatPercent } from '../utils/financialEngine';
 import {
   Bot,
-  Sparkles,
   Send,
   X,
   Minimize2,
@@ -297,7 +296,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
           </div>
           <div className="text-left hidden sm:block">
             <div className="text-xs font-black tracking-wider uppercase flex items-center gap-1.5 text-amber-500">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Bot className="w-3.5 h-3.5" />
               <span>IFOC Assistant</span>
             </div>
             <div className="text-[11px] opacity-75 font-medium">
@@ -572,7 +571,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
                 {isProcessing && (
                   <div className="flex items-center gap-2 text-slate-400 text-xs py-2">
                     <div className="w-5 h-5 rounded-md bg-amber-500/20 border border-amber-500/40 flex items-center justify-center animate-spin">
-                      <Sparkles className="w-3 h-3 text-amber-400" />
+                      <RotateCcw className="w-3 h-3 text-amber-400" />
                     </div>
                     <span>Calculating statistical paths & financial models...</span>
                   </div>
