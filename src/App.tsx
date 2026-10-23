@@ -27,6 +27,7 @@ import { HistoricalTab } from './components/HistoricalTab';
 import { MethodologyTab } from './components/MethodologyTab';
 import { DisclaimersModal } from './components/DisclaimersModal';
 import { InvestmentModal } from './components/InvestmentModal';
+import { Chatbot } from './components/Chatbot';
 import { TopInvestment } from './data/topInvestments';
 import { ShieldAlert, AlertTriangle } from 'lucide-react';
 
@@ -408,6 +409,56 @@ export default function App() {
     }
   }, [params, simResult, sensitivityMatrix, currency, currencyMode, isNominal, selectedAssetClass, analyzedCompany]);
 
+  // Chatbot Integration Handlers
+  const handleChatbotApplyParams = useCallback((
+    newParams: Partial<SimulationParameters>,
+    company?: AnalyzedCompany,
+    targetTab?: 'forecast' | 'withdrawal' | 'investments' | 'horizons' | 'historical' | 'methodology'
+  ) => {
+    if (company) {
+      setAnalyzedCompany(company);
+      setSelectedAssetClass('custom');
+    }
+    const updated: SimulationParameters = {
+      ...params,
+      ...newParams
+    };
+    setParams(updated);
+    handleRunSimulation(updated);
+    if (targetTab) {
+      setActiveTab(targetTab);
+    }
+  }, [params, handleRunSimulation]);
+
+  const handleChatbotSimulateBoth = useCallback((
+    newParams: Partial<SimulationParameters>,
+    company?: AnalyzedCompany,
+    _withdrawalRate?: number
+  ) => {
+    if (company) {
+      setAnalyzedCompany(company);
+      setSelectedAssetClass('custom');
+    }
+    const updated: SimulationParameters = {
+      ...params,
+      ...newParams
+    };
+    setParams(updated);
+    handleRunSimulation(updated);
+    setActiveTab('forecast');
+  }, [params, handleRunSimulation]);
+
+  const handleChatbotToggleStressTest = useCallback((enabled: boolean) => {
+    const updated: SimulationParameters = {
+      ...params,
+      enableStressTest: enabled,
+      stressTestYears: 3,
+      stressTestBaselineShift: -0.370
+    };
+    setParams(updated);
+    handleRunSimulation(updated);
+  }, [params, handleRunSimulation]);
+
   const handleResetDefaults = () => {
     setParams(DEFAULT_PARAMS);
     setSelectedAssetClass('us_equities');
@@ -574,6 +625,23 @@ export default function App() {
           setSelectedInvestmentModal(null);
           handleAnalyzeWithdrawalAsset(inv);
         }}
+      />
+
+      {/* Institutional AI Financial Assistant & Quant Simulation Chatbot */}
+      <Chatbot
+        theme={theme}
+        params={params}
+        analyzedCompany={analyzedCompany}
+        currency={currency}
+        activeTab={activeTab}
+        onApplySimulationParams={handleChatbotApplyParams}
+        onSimulateBoth={handleChatbotSimulateBoth}
+        onSelectCompany={handleSelectAnalyzedCompany}
+        onSwitchTab={setActiveTab}
+        onCurrencyChange={handleCurrencyChange}
+        onDownloadReport={handleDownloadReport}
+        onExportData={handleExportData}
+        onToggleStressTest={handleChatbotToggleStressTest}
       />
     </div>
   );
